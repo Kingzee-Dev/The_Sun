@@ -53,3 +53,23 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    ignore:
+      - dependency-name: "actions/checkout"
+        versions: ["2.x"]
+      - dependency-name: "actions/setup-julia"
+        versions: ["1.x"]
+  - package-ecosystem: "julia"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    ignore:
+      - dependency-name: "Pkg"
+        versions: ["1.x"]
+      - dependency-name: "Test"
+        versions: ["1.x"]

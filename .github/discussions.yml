@@ -1,0 +1,16 @@
+categories:
+  - name: General
+    description: General discussions about the project
+    emoji: speech_balloon
+  - name: Ideas
+    description: Share and discuss new ideas for the project
+    emoji: light_bulb
+  - name: Q&A
+    description: Questions and answers about the project
+    emoji: question
+  - name: Announcements
+    description: Important announcements and updates
+    emoji: mega
+  - name: Show and Tell
+    description: Showcase your work and achievements
+    emoji: tada
