@@ -96,30 +96,44 @@ function initialize!(system::CelestialSystem)
         "throughput" => 1.0,
         "quality" => 1.0
     ))
-    
+    register_component!(system.self_healing, "evolution_engine", Dict(
+        "adaptation_rate" => 1.0,
+        "mutation_probability" => 1.0
+    ))
+    register_component!(system.self_healing, "planetary_interface", Dict(
+        "connection_quality" => 1.0,
+        "protocol_efficiency" => 1.0
+    ))
+    register_component!(system.self_healing, "explainability", Dict(
+        "explanation_accuracy" => 1.0,
+        "confidence" => 1.0
+    ))
+
     # Set up evolution strategies
     strategy = create_evolution_strategy()
     set_evolution_strategy!(system.evolution_engine, "system_optimization", strategy)
-    
+    set_evolution_strategy!(system.evolution_engine, "law_evolution", strategy)
+    set_evolution_strategy!(system.evolution_engine, "healing_optimization", strategy)
+
     # Initialize planetary interface protocols
     protocol = create_protocol("universal", "1.0", :json)
     system.planetary_interface.protocol_handlers[:json] = identity
-    
+
     # Initialize system state
     system.system_state["status"] = :initialized
     system.system_state["health"] = 1.0
     system.system_state["timestamp"] = time()
-    
+
     # Record initialization event
     push!(system.event_history, Dict(
         "event" => "initialization",
         "timestamp" => time(),
         "status" => "completed"
     ))
-    
+
     # Enrich with internet data
     enrich_with_internet_data!(system)
-    
+
     return (success=true, timestamp=time())
 end
 
@@ -169,27 +183,27 @@ function process_input!(system::CelestialSystem, input::Dict{String, Any})
         "timestamp" => time(),
         "input_type" => get(input, "type", "unknown")
     ))
-    
+
     # Process through data processor
     processed_data = process_data!(system.data_processor, "main", input)
-    
+
     if !processed_data.success
         return (success=false, reason="Data processing failed")
     end
-    
+
     # Observe for laws
     observations = observe_data!(
         system.law_observatory,
         processed_data.data
     )
-    
+
     # Update model registry if new patterns found
     if !isempty(observations.patterns)
         for pattern in observations.patterns
             register_pattern!(system.model_registry, pattern)
         end
     end
-    
+
     # Generate explanation for processing
     context = ExplanationContext(
         time(),
@@ -199,16 +213,16 @@ function process_input!(system::CelestialSystem, input::Dict{String, Any})
         observations.patterns,
         String[]
     )
-    
+
     explanation = generate_explanation(
         system.explainability,
         context
     )
-    
+
     # Update system state
     system.system_state = merge(system.system_state, processed_data.data)
     system.system_state["last_processed"] = time()
-    
+
     return (
         success=true,
         processed_data=processed_data.data,
@@ -224,7 +238,7 @@ Trigger system evolution based on performance
 function evolve_system!(system::CelestialSystem)
     # Analyze current performance
     performance = analyze_system_performance(system)
-    
+
     if performance.needs_evolution
         # Evolve components
         for component_id in performance.components_to_evolve
@@ -232,7 +246,7 @@ function evolve_system!(system::CelestialSystem)
                 system.evolution_engine,
                 component_id
             )
-            
+
             if result.success
                 push!(system.event_history, Dict(
                     "event" => "evolution",
@@ -242,12 +256,12 @@ function evolve_system!(system::CelestialSystem)
                 ))
             end
         end
-        
+
         # Update system state
         system.system_state["last_evolution"] = time()
         system.system_state["evolution_generation"] += 1
     end
-    
+
     return performance
 end
 
@@ -257,7 +271,7 @@ Analyze overall system performance
 """
 function analyze_system_performance(system::CelestialSystem)
     metrics = Dict{String, Float64}()
-    
+
     # Collect performance metrics from all components
     metrics["orchestrator_health"] = system.orchestrator.health
     metrics["data_quality"] = mean(values(system.data_processor.quality_metrics))
@@ -265,19 +279,27 @@ function analyze_system_performance(system::CelestialSystem)
         model.genome.fitness
         for model in values(system.evolution_engine.components)
     )
-    
+    metrics["law_effectiveness"] = mean(
+        measure_law_effectiveness(law)
+        for law in system.law_observatory.active_laws
+    )
+    metrics["healing_success_rate"] = mean(
+        action.success_rate
+        for action in system.self_healing.recovery_history
+    )
+
     # Check component health
     component_health = monitor_health!(system.self_healing)
-    
+
     # Determine if evolution is needed
     needs_evolution = any(status == :degraded for status in values(component_health))
-    
+
     # Identify components needing evolution
     components_to_evolve = [
         id for (id, status) in component_health
         if status == :degraded
     ]
-    
+
     return (
         metrics=metrics,
         health=component_health,
@@ -293,7 +315,7 @@ Trigger self-healing mechanisms
 function heal_system!(system::CelestialSystem)
     # Detect anomalies
     anomalies = detect_anomalies(system.self_healing)
-    
+
     if !isempty(anomalies)
         for (component_id, detected_anomalies) in anomalies
             # Initiate recovery
@@ -301,7 +323,7 @@ function heal_system!(system::CelestialSystem)
                 system.self_healing,
                 component_id
             )
-            
+
             if recovery.success
                 # Execute recovery actions
                 while haskey(system.self_healing.active_recoveries, component_id)
@@ -309,26 +331,26 @@ function heal_system!(system::CelestialSystem)
                         system.self_healing,
                         component_id
                     )
-                    
+
                     push!(system.event_history, Dict(
                         "event" => "healing_action",
                         "component" => component_id,
                         "success" => result.success,
                         "timestamp" => time()
                     ))
-                    
+
                     if !result.success
                         break
                     end
                 end
             end
         end
-        
+
         # Update system state
         system.system_state["last_healing"] = time()
         system.system_state["healing_actions"] = length(anomalies)
     end
-    
+
     return anomalies
 end
 
@@ -343,7 +365,7 @@ function communicate!(system::CelestialSystem, target::String, message::Any)
         target,
         message
     )
-    
+
     if result.success
         push!(system.event_history, Dict(
             "event" => "communication",
@@ -352,7 +374,7 @@ function communicate!(system::CelestialSystem, target::String, message::Any)
             "timestamp" => time()
         ))
     end
-    
+
     return result
 end
 
@@ -362,31 +384,36 @@ Optimize all system components
 """
 function optimize_system!(system::CelestialSystem)
     optimizations = Dict{String, Any}()
-    
+
     # Optimize data processing
     optimizations["data_processor"] = optimize_processing!(
         system.data_processor
     )
-    
+
     # Optimize model registry
     optimizations["model_registry"] = optimize_registry!(
         system.model_registry
     )
-    
+
     # Optimize evolution parameters
     optimizations["evolution"] = optimize_evolution_parameters!(
         system.evolution_engine
     )
-    
+
     # Optimize healing strategies
     optimizations["healing"] = optimize_healing_strategies!(
         system.self_healing
     )
-    
+
+    # Optimize law observatory
+    optimizations["law_observatory"] = optimize_law_observatory!(
+        system.law_observatory
+    )
+
     # Update system state
     system.system_state["last_optimization"] = time()
     system.system_state["optimization_count"] += 1
-    
+
     return optimizations
 end
 
@@ -396,34 +423,43 @@ Generate a comprehensive system status report
 """
 function generate_system_report(system::CelestialSystem)
     report = Dict{String, Any}()
-    
+
     # System state
     report["state"] = copy(system.system_state)
-    
+
     # Component health
     report["health"] = monitor_health!(system.self_healing)
-    
+
     # Performance metrics
     report["performance"] = analyze_system_performance(system)
-    
+
     # Recent events
     report["recent_events"] = collect(Iterators.take(
         system.event_history,
         10
     ))
-    
+
     # Evolution status
     report["evolution"] = Dict(
         "active_components" => length(system.evolution_engine.components),
         "generation" => get(system.system_state, "evolution_generation", 0)
     )
-    
+
     # Communication status
     report["communication"] = Dict(
         "active_channels" => length(system.planetary_interface.active_channels),
         "connected_systems" => length(system.planetary_interface.connected_systems)
     )
-    
+
+    # Law observatory metrics
+    report["law_observatory"] = Dict(
+        "active_laws" => length(system.law_observatory.active_laws),
+        "law_performance" => mean(
+            measure_law_effectiveness(law)
+            for law in system.law_observatory.active_laws
+        )
+    )
+
     return report
 end
 
