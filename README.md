@@ -1,3 +1,9 @@
+# Project Status
+
+⚠️ **This project is public but its functionality is not fully confirmed. You may encounter unresolved issues or incomplete features.**
+
+If you experience problems, please check the [issues](../../issues) page or open a new issue. Community feedback and contributions are welcome to help improve stability and completeness.
+
 # Universal Celestial Intelligence
 
 An advanced, self-evolving Julia system that implements universal laws and patterns for intelligent, adaptive, and self-healing architectures.
