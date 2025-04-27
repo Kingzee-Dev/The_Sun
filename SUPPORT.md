@@ -10,3 +10,8 @@ Thank you for using Universal Celestial Intelligence!
 ## Contact
 Email: ckingzee@gmail.com
 WhatsApp: +91-9324750901
+
+## Additional Resources
+- [Documentation](docs/README.md): Detailed documentation for the project.
+- [Technical Diary](TECHNICAL_DIARY.md): Insights into technical decisions and progress.
+- [Code Review](CODE_REVIEW.md): Feedback on the codebase and suggestions for improvement.
