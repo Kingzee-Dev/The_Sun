@@ -1,10 +1,15 @@
 module UniversalCelestialIntelligence
 
+include("InternetModule.jl")
+using .InternetModule
+
 using DataStructures
 using Statistics
 using Graphs
 using StatsBase
-using ..InternetModule
+
+include("SystemScanner.jl")
+using .SystemScanner
 
 # Import all sub-modules
 include("UniversalLawObservatory/UniversalLawObservatory.jl")
@@ -40,6 +45,7 @@ mutable struct CelestialSystem
     explainability::ExplainabilitySystem
     system_state::Dict{String, Any}
     event_history::CircularBuffer{Dict{String, Any}}
+    hardware::Dict{String, Any}
 end
 
 """
@@ -57,15 +63,26 @@ function create_celestial_system()
         create_self_healing_system(),
         create_explainability_system(),
         Dict{String, Any}(),
-        CircularBuffer{Dict{String, Any}}(1000)
+        CircularBuffer{Dict{String, Any}}(1000),
+        Dict{String, Any}()
     )
 end
 
 """
     initialize!(system::CelestialSystem)
-Initialize all components of the celestial system
+Scans system hardware and logs inventory before initializing the system.
 """
 function initialize!(system::CelestialSystem)
+    # Scan and log hardware
+    hw = SystemScanner.scan_system_hardware()
+    open("TECHNICAL_DIARY.md", "a") do io
+        println(io, "\n## [$(hw["timestamp"])] Hardware Inventory Scan")
+        println(io, "- CPU: $(hw["cpu"])")
+        println(io, "- GPUs: $(hw["gpus"])")
+        println(io, "- Memory (GB): $(hw["memory_gb"])")
+    end
+    system.hardware = hw
+
     # Register components with self-healing
     register_component!(system.self_healing, "orchestrator", Dict(
         "responsiveness" => 1.0,

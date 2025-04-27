@@ -30,6 +30,7 @@ using .CognitiveLaws
 include("patterns/CrossDomainDetector.jl")
 include("patterns/LawApplicationEngine.jl")
 include("patterns/EmergentDiscovery.jl")
+using .EmergentDiscovery
 
 """
     MetricsCollector
@@ -119,5 +120,7 @@ export AttentionState, MemoryStore, InsightEvent, SelfModel,
        update_attention!, store_memory!, recall_memory, generate_insight, update_self_awareness!
 export MetricsCollector, create_metrics_collector, record_metric!,
        generate_evolution_report
+export PatternSignature, EmergentPattern, EmergentLaw, ObservationContext,
+       PatternDetector, create_pattern_detector, detect_patterns!, validate_pattern
 
 end # module
