@@ -40,3 +40,28 @@ jobs:
       #     password: ${{ secrets.DOCKERHUB_TOKEN }}
       # - name: Push Docker image
       #   run: docker push uci-app
+
+  codeql-analysis:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up CodeQL
+        uses: github/codeql-action/init@v2
+        with:
+          languages: ['javascript', 'python']
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v2
+
+  secret-scanning:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run secret scanning
+        run: |
+          echo "Running secret scanning..."
+          # Add your secret scanning tool or script here

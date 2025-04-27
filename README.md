@@ -86,7 +86,7 @@ It is suitable for research, education, and advanced engineering projects where 
 
 ```julia
 using Pkg
-Pkg.add(url="https://github.com/your-username/UniversalCelestialIntelligence.jl")
+Pkg.add(url="https://github.com/Kingzee-Dev/The_Sun.jl")
 ```
 
 ## Quick Start
@@ -126,7 +126,7 @@ You can run Universal Celestial Intelligence on your mobile device using GitHub 
 2. **Clone the repository from GitHub**
    - In Termux:
      ```sh
-     git clone https://github.com/your-username/UniversalCelestialIntelligence.git
+     git clone https://github.com/Kingzee-Dev/The_Sun.git
      cd UniversalCelestialIntelligence
      ```
 3. **Run Julia and install dependencies**
@@ -150,6 +150,118 @@ You can run Universal Celestial Intelligence on your mobile device using GitHub 
 - Performance may be limited on mobile devices.
 - For iOS, use a compatible Julia REPL app and follow similar steps.
 - Keep your code synced with GitHub for easy updates and collaboration.
+
+## Development Environment Setup
+
+To set up the development environment for Universal Celestial Intelligence, follow these steps:
+
+1. **Clone the repository**
+   ```sh
+   git clone https://github.com/Kingzee-Dev/The_Sun.git
+   cd UniversalCelestialIntelligence
+   ```
+
+2. **Install Julia and dependencies**
+   - Download and install Julia from the [official website](https://julialang.org/downloads/).
+   - In the project directory, start Julia and run:
+     ```julia
+     using Pkg
+     Pkg.instantiate()
+     ```
+
+3. **Set up the development environment**
+   - Install any additional tools or editors you prefer (e.g., VS Code with Julia extension).
+   - Configure your editor to use the Julia environment in the project directory.
+
+4. **Run tests**
+   - To ensure everything is set up correctly, run the tests:
+     ```julia
+     using Pkg
+     Pkg.test()
+     ```
+
+## Examples for Core Components
+
+### Universal Law Observatory
+
+```julia
+using UniversalCelestialIntelligence
+
+# Create and initialize the system
+system = create_celestial_system()
+initialize!(system)
+
+# Example: Observing data for laws
+data = Dict("temperature" => 300, "pressure" => 101.3)
+observations = observe_data!(system.law_observatory, data)
+println("Observed patterns: ", observations.patterns)
+```
+
+### Evolution Engine
+
+```julia
+using UniversalCelestialIntelligence
+
+# Create and initialize the system
+system = create_celestial_system()
+initialize!(system)
+
+# Example: Evolving a component
+component_id = "example_component"
+initial_traits = [0.5, 0.8, 0.3]
+component = create_adaptive_component(component_id, initial_traits)
+register_component!(system.evolution_engine, component)
+
+# Set evolution strategy
+strategy = create_evolution_strategy(
+    population_size=100,
+    fitness_function=(traits -> sum(traits))
+)
+set_evolution_strategy!(system.evolution_engine, component_id, strategy)
+
+# Evolve the component
+evolve_result = evolve_component!(system.evolution_engine, component_id)
+println("Evolved fitness: ", evolve_result.fitness)
+```
+
+### Self-Healing System
+
+```julia
+using UniversalCelestialIntelligence
+
+# Create and initialize the system
+system = create_celestial_system()
+initialize!(system)
+
+# Example: Detecting and healing anomalies
+anomalies = detect_anomalies(system.self_healing)
+if !isempty(anomalies)
+    for (component_id, detected_anomalies) in anomalies
+        recovery = initiate_recovery!(system.self_healing, component_id)
+        while haskey(system.self_healing.active_recoveries, component_id)
+            result = execute_recovery_action!(system.self_healing, component_id)
+            println("Healing action result: ", result.success)
+            if !result.success
+                break
+            end
+        end
+    end
+end
+```
+
+### Central Orchestrator
+
+```julia
+using UniversalCelestialIntelligence
+
+# Create and initialize the system
+system = create_celestial_system()
+initialize!(system)
+
+# Example: Updating the system
+stability_score = update_system!(system.orchestrator, system.system_state)
+println("System stability score: ", stability_score)
+```
 
 ## License
 

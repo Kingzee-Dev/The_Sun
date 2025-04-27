@@ -1,0 +1,38 @@
+name: Version Management
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Julia
+        uses: julia-actions/setup-julia@v1
+        with:
+          version: '1.6'
+
+      - name: Install dependencies
+        run: julia -e 'using Pkg; Pkg.instantiate()'
+
+      - name: Run tests
+        run: julia -e 'using Pkg; Pkg.test()'
+
+      - name: Bump version
+        run: |
+          current_version=$(julia -e 'using Pkg; println(Pkg.project().version)')
+          new_version=$(echo $current_version | awk -F. -v OFS=. '{$NF += 1 ; print}')
+          julia -e "using Pkg; Pkg.setversion(\"$new_version\")"
+          git config --global user.email "actions@github.com"
+          git config --global user.name "GitHub Actions"
+          git commit -am "Bump version to $new_version"
+          git push origin main
