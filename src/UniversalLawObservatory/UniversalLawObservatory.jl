@@ -1,5 +1,8 @@
 module UniversalLawObservatory
 
+include("patterns/EmergentDiscovery.jl")
+using .EmergentDiscovery
+
 using LinearAlgebra
 using Distributions
 using DifferentialEquations
@@ -29,8 +32,6 @@ using .CognitiveLaws
 # Pattern Recognition
 include("patterns/CrossDomainDetector.jl")
 include("patterns/LawApplicationEngine.jl")
-include("patterns/EmergentDiscovery.jl")
-using .EmergentDiscovery
 
 """
     MetricsCollector
