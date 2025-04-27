@@ -1,7 +1,7 @@
 name = "UniversalCelestialIntelligence"
 uuid = "f2c52432-5678-4a01-b92c-3f075e2f3456"
 authors = ["Kingzee Chhachhi <ckingzee@gmail.com> (Lead, Maintainer, +91-9324750901)", "Aasees Chhachhi (Contributor, younger brother)", "Chand Chhachhi (Contributor, cousin, Jalandhar, Punjab, India)"]
-version = "0.1.0"
+version = "0.2.0"
 
 [deps]
 DataStructures = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"

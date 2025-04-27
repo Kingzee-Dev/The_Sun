@@ -120,6 +120,12 @@ function initialize!(system::CelestialSystem)
     # Enrich with internet data
     enrich_with_internet_data!(system)
     
+    # Run research and experiment phase
+    run_research_and_experiment!(system)
+    
+    # Run coding and evolution phase
+    run_coding_and_evolution!(system)
+    
     return (success=true, timestamp=time())
 end
 
@@ -427,8 +433,38 @@ function generate_system_report(system::CelestialSystem)
     return report
 end
 
+"""
+    run_research_and_experiment!(system::CelestialSystem)
+Simulate the research and experiment phase for 1 hour.
+"""
+function run_research_and_experiment!(system::CelestialSystem)
+    println("Starting research and experiment phase...")
+    sleep(3600)  # Simulate 1 hour of research and experiment
+    println("Research and experiment phase completed.")
+end
+
+"""
+    run_coding_and_evolution!(system::CelestialSystem)
+Simulate the coding and evolution phase for 1 hour.
+"""
+function run_coding_and_evolution!(system::CelestialSystem)
+    println("Starting coding and evolution phase...")
+    sleep(3600)  # Simulate 1 hour of coding and evolution
+    println("Coding and evolution phase completed.")
+end
+
+"""
+    run_complete_session!(system::CelestialSystem)
+Run both research and experiment phase and coding and evolution phase sequentially.
+"""
+function run_complete_session!(system::CelestialSystem)
+    run_research_and_experiment!(system)
+    run_coding_and_evolution!(system)
+end
+
 export CelestialSystem, create_celestial_system, initialize!,
        process_input!, evolve_system!, heal_system!, communicate!,
-       optimize_system!, generate_system_report, enrich_with_internet_data!
+       optimize_system!, generate_system_report, enrich_with_internet_data!,
+       run_research_and_experiment!, run_coding_and_evolution!, run_complete_session!
 
 end # module

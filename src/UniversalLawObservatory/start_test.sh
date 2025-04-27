@@ -97,4 +97,9 @@ monitor_evolution() {
 
 # Main execution
 echo "🚀 Initializing system..."
-monitor_evolution
+julia --project=../.. -e '
+    using UniversalCelestialIntelligence
+    system = create_celestial_system()
+    initialize!(system)
+    run_complete_session!(system)
+'
