@@ -7,6 +7,7 @@ using DataStructures
 using Statistics
 using Graphs
 using StatsBase
+using Dates
 
 include("SystemScanner.jl")
 using .SystemScanner
@@ -32,19 +33,22 @@ using .Explainability
 using .CentralOrchestrator
 using .RealDataIngestion
 
+# Import the specific functions we need
+import UniversalLawObservatory: apply_physical_laws!, apply_biological_laws!, apply_mathematical_laws!
+
 """
     CelestialSystem
-Main system that orchestrates all components
+Main system structure
 """
 mutable struct CelestialSystem
-    orchestrator::Orchestrator
-    law_observatory::LawObservatory
-    data_processor::DataProcessor
-    model_registry::Registry
-    evolution_engine::EvolutionEngine
-    planetary_interface::Interface
-    self_healing::SelfHealingSystem
-    explainability::ExplainabilitySystem
+    law_observatory::UniversalLawObservatory.LawObservatory
+    orchestrator::CentralOrchestrator.Orchestrator
+    data_processor::UniversalDataProcessor.DataProcessor
+    model_registry::ModelRegistry.Registry
+    evolution_engine::EvolutionEngine.EvolutionHandler
+    planetary_interface::PlanetaryInterface.Interface
+    self_healing::SelfHealing.SelfHealingSystem
+    explainability::Explainability.ExplainabilitySystem
     system_state::Dict{String, Any}
     event_history::CircularBuffer{Dict{String, Any}}
     hardware::Dict{String, Any}
@@ -56,8 +60,8 @@ Create a new celestial system with all components
 """
 function create_celestial_system()
     CelestialSystem(
-        create_orchestrator(),
         create_law_observatory(),
+        create_orchestrator(),
         create_data_processor(),
         create_registry(),
         create_evolution_engine(),
@@ -230,100 +234,42 @@ end
 
 """
     process_input!(system::CelestialSystem, input::Dict{String, Any})
-Process input through all relevant components and law domains
+Process input data through all universal laws
 """
 function process_input!(system::CelestialSystem, input::Dict{String, Any})
-    # Record input event
-    push!(system.event_history, Dict(
-        "event" => "input_received",
-        "timestamp" => time(),
-        "input_type" => get(input, "type", "unknown")
-    ))
-    
-    # Process through data processor
-    processed_data = process_data!(system.data_processor, "main", input)
-    
-    if !processed_data.success
-        return (success=false, reason="Data processing failed")
-    end
-    
     # Process through physical laws
     physical_results = apply_physical_laws!(
         system.law_observatory,
-        processed_data.data
+        input
     )
     
     # Process through biological laws
     biological_results = apply_biological_laws!(
         system.law_observatory,
-        merge(processed_data.data, physical_results.state)
+        merge(input, physical_results.state)
     )
     
     # Process through mathematical laws
     mathematical_results = apply_mathematical_laws!(
         system.law_observatory,
-        merge(processed_data.data, physical_results.state, biological_results.state)
+        merge(input, physical_results.state, biological_results.state)
     )
     
-    # Combine observations from all domains
-    observations = combine_law_observations(
-        physical_results.observations,
-        biological_results.observations,
-        mathematical_results.observations
-    )
-    
-    # Update model registry with patterns from each domain
-    if !isempty(observations.patterns)
-        for pattern in observations.patterns
-            register_pattern!(system.model_registry, pattern)
-        end
-    end
-    
-    # Generate explanation incorporating all domains
-    context = ExplanationContext(
-        time(),
-        :processing,
-        system.system_state,
-        merge(
-            processed_data.data,
-            physical_results.state,
-            biological_results.state,
-            mathematical_results.state
-        ),
-        observations.patterns,
-        String[]
-    )
-    
-    explanation = generate_explanation(
-        system.explainability,
-        context
-    )
-    
-    # Update system state with combined results
-    system.system_state = merge(
-        system.system_state,
-        processed_data.data,
+    # Combine all results
+    final_state = merge(
         physical_results.state,
         biological_results.state,
         mathematical_results.state
     )
-    system.system_state["last_processed"] = time()
-    
-    # Record law application metrics
-    system.system_state["law_metrics"] = Dict(
-        "physical" => physical_results.metrics,
-        "biological" => biological_results.metrics,
-        "mathematical" => mathematical_results.metrics
-    )
     
     return (
         success=true,
-        processed_data=processed_data.data,
-        physical_results=physical_results,
-        biological_results=biological_results,
-        mathematical_results=mathematical_results,
-        observations=observations,
-        explanation=explanation
+        state=final_state,
+        observations=Dict(
+            "physical" => physical_results.observations,
+            "biological" => biological_results.observations,
+            "mathematical" => mathematical_results.observations
+        )
     )
 end
 
@@ -655,7 +601,6 @@ end
 Orchestrate alternating scientist and engineer sessions, logging all actions and internet enrichment in a human-readable diary. Scientist session fetches and experiments on real data.
 """
 function run_dual_sessions!(system::CelestialSystem; scientist_duration=45*60, engineer_duration=60*60, log_file="TECHNICAL_DIARY.md", data_source=nothing, data_format=:json)
-    using Dates
     session_start = now()
     # Scientist Session
     open(log_file, "a") do io

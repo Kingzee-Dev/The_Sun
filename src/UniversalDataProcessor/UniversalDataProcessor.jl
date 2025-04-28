@@ -198,24 +198,23 @@ function apply_mathematical_transformations(data::Dict{String, Any})
 end
 
 function calculate_data_quality(data::Dict{String, Any})
-    # Calculate completeness
-    expected_fields = ["state", "energy", "mass", "pattern", "signal"]
-    completeness = sum(haskey(data, field) for field in expected_fields) / length(expected_fields)
-    
-    # Calculate consistency
-    consistency = 1.0
-    if haskey(data, "state") && haskey(data, "energy")
-        consistency = min(1.0, data["energy"] / (1 + abs(data["energy"])))
+    # Extract only numeric values for quality calculation
+    numeric_values = Float64[]
+    for (_, value) in data
+        if isa(value, Number)
+            push!(numeric_values, Float64(value))
+        end
     end
     
-    # Calculate accuracy (assuming normalized values)
-    accuracy = mean([
-        0 <= get(data, field, 0) <= 1
-        for field in keys(data)
-        if isa(get(data, field, 0), Number)
-    ])
+    if isempty(numeric_values)
+        return 0.0
+    end
     
-    return mean([completeness, consistency, accuracy])
+    # Calculate quality metrics using only numeric values
+    completeness = length(numeric_values) / length(data)
+    consistency = 1.0 - std(numeric_values) / (mean(numeric_values) + 1e-10)
+    
+    return 0.5 * (completeness + max(0.0, consistency))
 end
 
 function update_stream_statistics!(processor::DataProcessor, stream_id::String, data::Dict{String, Any})

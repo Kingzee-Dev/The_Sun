@@ -1,13 +1,24 @@
 module Explainability
 
-using DataStructures
 using Statistics
+using DataStructures
 using Graphs
 using StatsBase
-
 using ..UniversalLawObservatory.InformationTheory
 using ..UniversalLawObservatory.CrossDomainDetector
 using ..UniversalLawObservatory.EmergentDiscovery
+
+"""
+    CrossDomainPattern
+Represents a pattern that appears across multiple domains
+"""
+struct CrossDomainPattern
+    id::String
+    domains::Vector{String}
+    characteristics::Dict{String, Any}
+    confidence::Float64
+    support::Dict{String, Float64}
+end
 
 """
     ExplanationContext
@@ -61,6 +72,15 @@ mutable struct ExplainabilitySystem
 end
 
 """
+    ExplainabilityEngine
+Main engine for generating explanations
+"""
+mutable struct ExplainabilityEngine
+    patterns::Dict{String, CrossDomainPattern}
+    evidence_history::CircularBuffer{Dict{String, Any}}
+end
+
+"""
     create_explainability_system(history_size::Int=1000)
 Create a new explainability system
 """
@@ -71,6 +91,17 @@ function create_explainability_system(history_size::Int=1000)
         Dict{String, CrossDomainPattern}(),
         Dict{String, Float64}(),
         SimpleDiGraph(0)
+    )
+end
+
+"""
+    create_explainability_engine()
+Create a new explainability engine
+"""
+function create_explainability_engine()
+    ExplainabilityEngine(
+        Dict{String, CrossDomainPattern}(),
+        CircularBuffer{Dict{String, Any}}(1000)
     )
 end
 
@@ -93,13 +124,13 @@ end
 Register a pattern for use in explanations
 """
 function register_pattern!(system::ExplainabilitySystem, pattern::CrossDomainPattern)
-    system.pattern_registry[pattern.name] = pattern
-    system.confidence_thresholds[pattern.name] = 0.8  # Default threshold
+    system.pattern_registry[pattern.id] = pattern
+    system.confidence_thresholds[pattern.id] = 0.8  # Default threshold
     
     # Update causal graph
     add_vertex!(system.causal_graph)
     
-    return (success=true, pattern_name=pattern.name)
+    return (success=true, pattern_id=pattern.id)
 end
 
 """
@@ -152,11 +183,11 @@ function filter_relevant_patterns(system::ExplainabilitySystem, context::Explana
     
     for pattern in values(system.pattern_registry)
         # Check if pattern applies to current domain
-        if context.domain in pattern.signature.domain_origins
+        if context.domain in pattern.domains
             # Calculate pattern relevance
             relevance = calculate_pattern_relevance(pattern, context)
             
-            if relevance >= system.confidence_thresholds[pattern.name]
+            if relevance >= system.confidence_thresholds[pattern.id]
                 push!(relevant_patterns, pattern)
             end
         end
@@ -172,14 +203,14 @@ Calculate how relevant a pattern is to the current context
 function calculate_pattern_relevance(pattern::CrossDomainPattern, context::ExplanationContext)
     # Compare pattern features with context state changes
     feature_matches = 0
-    total_features = length(pattern.signature.features)
+    total_features = length(pattern.characteristics)
     
     for (key, value) in context.state_after
         if haskey(context.state_before, key)
             change = value - context.state_before[key]
             
             # Check if change matches pattern features
-            if any(abs(feature - change) < 0.1 for feature in pattern.signature.features)
+            if any(abs(feature - change) < 0.1 for feature in values(pattern.characteristics))
                 feature_matches += 1
             end
         end
@@ -213,10 +244,10 @@ function analyze_causality(system::ExplainabilitySystem, context::ExplanationCon
         
         if !isempty(explaining_patterns)
             # Sort patterns by confidence
-            sort!(explaining_patterns, by=p -> p.signature.confidence, rev=true)
+            sort!(explaining_patterns, by=p -> p.confidence, rev=true)
             best_pattern = first(explaining_patterns)
             
-            push!(causal_chain, "$(best_pattern.name) caused change in $key")
+            push!(causal_chain, "$(best_pattern.id) caused change in $key")
         end
     end
     
@@ -229,7 +260,7 @@ Check if a pattern can explain an observed change
 """
 function explain_change(pattern::CrossDomainPattern, key::String, change::Float64)
     # Check if pattern features match the observed change
-    any(abs(feature - change) < 0.1 for feature in pattern.signature.features)
+    any(abs(feature - change) < 0.1 for feature in values(pattern.characteristics))
 end
 
 """
@@ -258,7 +289,7 @@ function generate_description(context::ExplanationContext, causal_chain::Vector{
     if !isempty(context.active_patterns)
         description *= "\nActive patterns:\n"
         for pattern in context.active_patterns
-            description *= "- $(pattern.name)\n"
+            description *= "- $(pattern.id)\n"
         end
     end
     
@@ -278,9 +309,9 @@ function estimate_confidence(system::ExplainabilitySystem, context::ExplanationC
     
     # Pattern-based confidence
     for pattern in context.active_patterns
-        if haskey(system.confidence_thresholds, pattern.name)
-            threshold = system.confidence_thresholds[pattern.name]
-            push!(confidence_scores, pattern.signature.confidence / threshold)
+        if haskey(system.confidence_thresholds, pattern.id)
+            threshold = system.confidence_thresholds[pattern.id]
+            push!(confidence_scores, pattern.confidence / threshold)
         end
     end
     
@@ -321,9 +352,9 @@ function collect_evidence(system::ExplainabilitySystem, context::ExplanationCont
     for pattern in context.active_patterns
         push!(evidence, Dict(
             "type" => "pattern_match",
-            "pattern" => pattern.name,
-            "confidence" => pattern.signature.confidence,
-            "domains" => pattern.signature.domain_origins
+            "pattern" => pattern.id,
+            "confidence" => pattern.confidence,
+            "domains" => pattern.domains
         ))
     end
     
@@ -353,7 +384,7 @@ function generate_alternatives(system::ExplainabilitySystem, context::Explanatio
         
         relevance = calculate_pattern_relevance(pattern, context)
         if relevance >= 0.5  # Lower threshold for alternatives
-            explanation = "Alternative explanation based on $(pattern.name): "
+            explanation = "Alternative explanation based on $(pattern.id): "
             explanation *= generate_pattern_explanation(pattern, context)
             push!(alternatives, explanation)
         end
@@ -367,13 +398,13 @@ end
 Generate an explanation based on a specific pattern
 """
 function generate_pattern_explanation(pattern::CrossDomainPattern, context::ExplanationContext)
-    explanation = "Pattern $(pattern.name) suggests that "
+    explanation = "Pattern $(pattern.id) suggests that "
     
     # Analyze pattern features
-    feature_count = length(pattern.signature.features)
+    feature_count = length(pattern.characteristics)
     if feature_count > 0
         explanation *= "the system exhibits $(feature_count) characteristic behaviors: "
-        for (i, feature) in enumerate(pattern.signature.features)
+        for (i, feature) in enumerate(values(pattern.characteristics))
             if i > 1
                 explanation *= ", "
             end
@@ -382,7 +413,7 @@ function generate_pattern_explanation(pattern::CrossDomainPattern, context::Expl
     end
     
     explanation *= ". This pattern has been observed in domains: "
-    explanation *= join(string.(pattern.signature.domain_origins), ", ")
+    explanation *= join(pattern.domains, ", ")
     
     return explanation
 end
@@ -397,7 +428,7 @@ function determine_abstraction_level(context::ExplanationContext, causal_chain::
     
     # Increase level based on pattern complexity
     if !isempty(context.active_patterns)
-        max_pattern_level = maximum(p.signature.abstraction_level for p in context.active_patterns)
+        max_pattern_level = maximum(p.confidence for p in context.active_patterns)
         base_level += max_pattern_level
     end
     
@@ -436,7 +467,7 @@ function validate_explanation(system::ExplainabilitySystem, explanation::Explana
     
     # Validate pattern support
     pattern_support = all(
-        pattern.signature.confidence >= system.confidence_thresholds[pattern.name]
+        pattern.confidence >= system.confidence_thresholds[pattern.id]
         for pattern in explanation.context.active_patterns
     )
     validation_results["pattern_support"] = pattern_support
@@ -464,7 +495,8 @@ function validate_causal_link(cause::String, effect::String)
 end
 
 export ExplainabilitySystem, Explanation, ExplanationModel, ExplanationContext,
-       create_explainability_system, create_explanation_model,
+       CrossDomainPattern, ExplainabilityEngine,
+       create_explainability_system, create_explainability_engine, create_explanation_model,
        register_pattern!, generate_explanation, validate_explanation
 
 end # module

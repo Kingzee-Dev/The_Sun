@@ -1,9 +1,11 @@
 name = "UniversalCelestialIntelligence"
-uuid = "f2c52432-5678-4a01-b92c-3f075e2f3456"
+uuid = "e8572f8d-0ad1-4a77-8921-1d76e5452316"
 authors = ["Kingzee Chhachhi <ckingzee@gmail.com> (Lead, Maintainer, +91-9324750901)", "Aasees Chhachhi (Contributor, younger brother)", "Chand Chhachhi (Contributor, cousin, Jalandhar, Punjab, India)"]
 version = "0.1.0"
 
 [deps]
+CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 DataStructures = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
 DifferentialEquations = "0c46a032-eb83-5123-abaf-570d42b7fbaa"
@@ -14,8 +16,8 @@ JSON3 = "0f8b85d8-7281-11e9-16c2-39a750bddbf1"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 SHA = "ea8e919c-243c-51af-8825-aaa63cd721ce"
-StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 
 [compat]
@@ -28,6 +30,8 @@ HTTP = "1.7"
 JSON3 = "1.12"
 LinearAlgebra = "1.11.0"
 Random = "1.11.0"
+SHA = "0.7"
+Statistics = "1.9"
 StaticArrays = "1.9.13"
 StatsBase = "0.33"
 julia = "1.6"

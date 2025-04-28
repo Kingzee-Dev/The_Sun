@@ -1,3 +1,5 @@
+__precompile__(true)
+
 module ChaosTheory
 
 using DifferentialEquations
@@ -130,45 +132,36 @@ end
     estimate_correlation_dimension(states::Vector{Vector{Float64}})
 Estimate the correlation dimension of the attractor
 """
-function estimate_correlation_dimension(states::Vector{Vector{Float64}})
-    n = length(states)
-    if n < 100
+function estimate_correlation_dimension(trajectory::Vector{Vector{Float64}})
+    if length(trajectory) < 2
         return 0.0
     end
     
-    # Sample pairs of points
-    samples = min(1000, n)
-    distances = Float64[]
+    # Calculate pairwise distances
+    n_points = min(length(trajectory), 1000)  # Limit computation
+    distances = [
+        norm(trajectory[i] - trajectory[j])
+        for i in 1:n_points
+        for j in (i+1):n_points
+    ]
     
-    for i in 1:samples
-        for j in (i+1):samples
-            push!(distances, norm(states[i] - states[j]))
-        end
-    end
-    
-    # Estimate dimension using correlation sum scaling
-    r_values = exp10.(range(-2, 0, length=20))
-    correlations = Float64[]
+    # Estimate dimension using correlation sum
+    r_values = sort(unique(distances))
+    correlation_sums = Float64[]
     
     for r in r_values
-        c = count(d -> d < r, distances) / (samples * (samples - 1) / 2)
-        push!(correlations, c)
+        c = sum(d <= r for d in distances) / length(distances)
+        push!(correlation_sums, c)
     end
     
     # Estimate dimension from log-log slope
-    valid_points = correlations .> 0
-    if sum(valid_points) < 2
-        return 0.0
+    if length(correlation_sums) >= 2
+        log_r = log.(r_values)
+        log_c = log.(correlation_sums)
+        return (log_c[end] - log_c[1]) / (log_r[end] - log_r[1])
     end
     
-    x = log.(r_values[valid_points])
-    y = log.(correlations[valid_points])
-    
-    # Linear regression to find slope
-    A = [ones(length(x)) x]
-    slope = (A \ y)[2]
-    
-    return slope
+    return 0.0
 end
 
 """
@@ -411,38 +404,6 @@ function calculate_local_lyapunov(point1::Vector{Float64}, point2::Vector{Float6
         return 0.0
     end
     return log(distance)
-end
-
-function estimate_correlation_dimension(trajectory::Vector{Vector{Float64}})
-    if length(trajectory) < 2
-        return 0.0
-    end
-    
-    # Calculate pairwise distances
-    n_points = min(length(trajectory), 1000)  # Limit computation
-    distances = [
-        norm(trajectory[i] - trajectory[j])
-        for i in 1:n_points
-        for j in (i+1):n_points
-    ]
-    
-    # Estimate dimension using correlation sum
-    r_values = sort(unique(distances))
-    correlation_sums = Float64[]
-    
-    for r in r_values
-        c = sum(d <= r for d in distances) / length(distances)
-        push!(correlation_sums, c)
-    end
-    
-    # Estimate dimension from log-log slope
-    if length(correlation_sums) >= 2
-        log_r = log.(r_values)
-        log_c = log.(correlation_sums)
-        return (log_c[end] - log_c[1]) / (log_r[end] - log_r[1])
-    end
-    
-    return 0.0
 end
 
 function calculate_trajectory_stability(trajectory::Vector{Vector{Float64}})

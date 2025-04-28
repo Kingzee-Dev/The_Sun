@@ -1,5 +1,8 @@
 module InformationTheory
 
+# Add precompile directive
+__precompile__(true)
+
 using StatsBase
 using LinearAlgebra
 using Distributions
@@ -7,7 +10,7 @@ using Statistics
 using DataStructures
 
 """
-    Message
+    Message{T}
 Represents an information-carrying message in the system
 """
 struct Message{T}
@@ -21,12 +24,21 @@ end
     Channel
 Represents a communication channel between system components
 """
-mutable struct Channel
+struct Channel{T}
     capacity::Float64
     noise_level::Float64
-    current_load::Float64
-    reliability::Float64
-    message_queue::Vector{Message}
+    compression_ratio::Float64
+    buffer::Channel{T}
+end
+
+"""
+Create a new channel with specified parameters
+"""
+function Channel{T}(; capacity::Float64=1.0,
+                     noise_level::Float64=0.1,
+                     compression_ratio::Float64=1.0,
+                     buffer_size::Int=100) where T
+    return Channel{T}(capacity, noise_level, compression_ratio, Channel{T}(buffer_size))
 end
 
 """
@@ -62,7 +74,7 @@ end
 Add a new information channel to the system
 """
 function add_channel!(system::InformationSystem, channel_id::String, capacity::Float64)
-    system.channels[channel_id] = Channel{Any}(100)
+    system.channels[channel_id] = Channel{Any}(capacity=capacity)
     system.entropies[channel_id] = CircularBuffer{Float64}(1000)
     system.channel_capacities[channel_id] = capacity
     system.noise_levels[channel_id] = 0.1
@@ -121,7 +133,7 @@ function process_data!(system::InformationSystem, channel_id::String, data::Any)
     end
     
     # Transmit processed data
-    put!(system.channels[channel_id], processed_data)
+    put!(system.channels[channel_id].buffer, processed_data)
     
     return (
         success=true,
@@ -140,8 +152,8 @@ function calculate_mutual_information!(system::InformationSystem, channel1::Stri
     end
     
     # Get recent data from channels
-    data1 = collect(Iterators.take(system.channels[channel1], 100))
-    data2 = collect(Iterators.take(system.channels[channel2], 100))
+    data1 = collect(Iterators.take(system.channels[channel1].buffer, 100))
+    data2 = collect(Iterators.take(system.channels[channel2].buffer, 100))
     
     if isempty(data1) || isempty(data2)
         return (success=false, reason="Insufficient data")

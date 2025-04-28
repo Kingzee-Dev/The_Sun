@@ -6,6 +6,7 @@ using DataStructures
 using Graphs
 using ..UniversalLawObservatory.InformationTheory
 using ..UniversalDataProcessor
+using Base: Channel  # Add explicit import of Channel type
 
 """
     InterfaceProtocol
@@ -55,6 +56,16 @@ struct ExternalConnector
     last_check::Float64
     endpoints::Dict{String, String}
     cache::Dict{String, Any}
+end
+
+"""
+    CommunicationChannel
+Represents a bidirectional communication channel
+"""
+struct CommunicationChannel
+    input::Channel{Any}
+    output::Channel{Any}
+    buffer_size::Int
 end
 
 """

@@ -26,10 +26,10 @@ mutable struct ComponentGenome
 end
 
 """
-    EvolutionEngine
+    EvolutionHandler
 Main engine for evolving system components
 """
-mutable struct EvolutionEngine
+mutable struct EvolutionHandler
     components::Dict{String, ComponentGenome}
     strategies::Dict{String, EvolutionStrategy}
     populations::Dict{String, Vector{ComponentGenome}}
@@ -43,7 +43,7 @@ end
 Initialize a new evolution engine
 """
 function create_evolution_engine()
-    EvolutionEngine(
+    EvolutionHandler(
         Dict{String, ComponentGenome}(),
         Dict{String, EvolutionStrategy}(),
         Dict{String, Vector{ComponentGenome}}(),
@@ -80,10 +80,10 @@ function create_evolution_strategy(;
 end
 
 """
-    evolve_component!(engine::EvolutionEngine, component_id::String; strategy::String="default")
+    evolve_component!(engine::EvolutionHandler, component_id::String; strategy::String="default")
 Evolve a specific component using the specified strategy
 """
-function evolve_component!(engine::EvolutionEngine, component_id::String; strategy::String="default")
+function evolve_component!(engine::EvolutionHandler, component_id::String; strategy::String="default")
     if !haskey(engine.components, component_id)
         return (success=false, reason="Component not found")
     end
@@ -167,10 +167,10 @@ function evolve_component!(engine::EvolutionEngine, component_id::String; strate
 end
 
 """
-    adapt_component!(engine::EvolutionEngine, component_id::String, feedback::Dict{String, Float64})
+    adapt_component!(engine::EvolutionHandler, component_id::String, feedback::Dict{String, Float64})
 Adapt a component based on feedback
 """
-function adapt_component!(engine::EvolutionEngine, component_id::String, feedback::Dict{String, Float64})
+function adapt_component!(engine::EvolutionHandler, component_id::String, feedback::Dict{String, Float64})
     if !haskey(engine.components, component_id)
         return (success=false, reason="Component not found")
     end
@@ -205,10 +205,10 @@ function adapt_component!(engine::EvolutionEngine, component_id::String, feedbac
 end
 
 """
-    analyze_evolution(engine::EvolutionEngine, component_id::String)
+    analyze_evolution(engine::EvolutionHandler, component_id::String)
 Analyze the evolution progress of a component
 """
-function analyze_evolution(engine::EvolutionEngine, component_id::String)
+function analyze_evolution(engine::EvolutionHandler, component_id::String)
     if !haskey(engine.components, component_id)
         return (success=false, reason="Component not found")
     end
@@ -238,10 +238,10 @@ function analyze_evolution(engine::EvolutionEngine, component_id::String)
 end
 
 """
-    optimize_evolution_parameters!(engine::EvolutionEngine)
+    optimize_evolution_parameters!(engine::EvolutionHandler)
 Optimize evolution parameters based on performance
 """
-function optimize_evolution_parameters!(engine::EvolutionEngine)
+function optimize_evolution_parameters!(engine::EvolutionHandler)
     optimizations = Dict{String, Any}()
     
     for (strategy_id, strategy) in engine.strategies
@@ -287,6 +287,15 @@ function optimize_evolution_parameters!(engine::EvolutionEngine)
     end
     
     return optimizations
+end
+
+"""
+    set_evolution_strategy!(engine::EvolutionHandler, strategy_id::String, strategy::EvolutionStrategy)
+Set evolution strategy for a specific component or domain
+"""
+function set_evolution_strategy!(engine::EvolutionHandler, strategy_id::String, strategy::EvolutionStrategy)
+    engine.strategies[strategy_id] = strategy
+    return strategy
 end
 
 # Helper functions
@@ -363,7 +372,7 @@ function mutate!(genome::ComponentGenome)
     end
 end
 
-function update_evolution_rate!(engine::EvolutionEngine, component_id::String)
+function update_evolution_rate!(engine::EvolutionHandler, component_id::String)
     history = get(engine.fitness_history, component_id, CircularBuffer{Float64}(0))
     
     if length(history) >= 2
@@ -378,9 +387,10 @@ function update_evolution_rate!(engine::EvolutionEngine, component_id::String)
     end
 end
 
-export EvolutionEngine, EvolutionStrategy,
+export EvolutionHandler, EvolutionStrategy,
        create_evolution_engine, create_evolution_strategy,
        evolve_component!, adapt_component!,
-       analyze_evolution, optimize_evolution_parameters!
+       analyze_evolution, optimize_evolution_parameters!,
+       set_evolution_strategy!
 
 end # module
