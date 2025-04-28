@@ -12,8 +12,35 @@ using Dates
 include("SystemScanner.jl")
 using .SystemScanner
 
-# Import all sub-modules
-include("UniversalLawObservatory/UniversalLawObservatory.jl")
+# Core domains include
+include("UniversalLawObservatory/patterns/EmergentDiscovery.jl")
+include("UniversalLawObservatory/patterns/CrossDomainDetector.jl")
+include("UniversalLawObservatory/patterns/LawApplicationEngine.jl")
+
+# Physical domain includes
+include("UniversalLawObservatory/physical/GravitationalAllocation.jl")
+include("UniversalLawObservatory/physical/ThermodynamicEfficiency.jl")
+include("UniversalLawObservatory/physical/QuantumProbability.jl")
+include("UniversalLawObservatory/physical/PhysicalLaws.jl")
+
+# Biological domain includes
+include("UniversalLawObservatory/biological/EvolutionaryPatterns.jl")
+include("UniversalLawObservatory/biological/HomeostasisControl.jl")
+include("UniversalLawObservatory/biological/SymbioticSystems.jl")
+include("UniversalLawObservatory/biological/BiologicalLaws.jl")
+
+# Mathematical domain includes
+include("UniversalLawObservatory/mathematical/FractalArchitecture.jl")
+include("UniversalLawObservatory/mathematical/ChaosTheory.jl")
+include("UniversalLawObservatory/mathematical/InformationTheory.jl")
+include("UniversalLawObservatory/mathematical/MathematicalLaws.jl")
+
+# Cognitive and metrics includes
+include("UniversalLawObservatory/cognitive/CognitiveLaws.jl")
+include("UniversalLawObservatory/metrics/MetricsCollector.jl")
+
+# Main system components
+include("UniversalLawObservatory.jl")
 include("UniversalDataProcessor/UniversalDataProcessor.jl")
 include("ModelRegistry/ModelRegistry.jl")
 include("EvolutionEngine/EvolutionEngine.jl")
