@@ -1,198 +1,133 @@
 module SelfHealing
 
-using DataStructures
 using Statistics
-using Graphs
-using StatsBase
-
-using ..UniversalLawObservatory.HomeostasisControl
-using ..UniversalLawObservatory.SymbioticSystems
-using ..UniversalDataProcessor
+using DataStructures
 
 """
-    SystemHealth
-Represents the health status of a system component
+    SelfHealingSystem
+System that maintains health through homeostasis and self-repair
 """
-mutable struct SystemHealth
-    component_id::String
-    metrics::Dict{String, Float64}
-    thresholds::Dict{String, Float64}
-    history::CircularBuffer{Dict{String, Float64}}
-    status::Symbol  # :healthy, :degraded, :critical
+mutable struct SelfHealingSystem
+    components::Dict{String, Dict{String, Float64}}
+    health_history::CircularBuffer{Dict{String, Float64}}
+    active_recoveries::Dict{String, Vector{Function}}
+    homeostasis_ranges::Dict{String, Tuple{Float64, Float64}}
+    anomaly_thresholds::Dict{String, Float64}
+    recovery_strategies::Dict{String, Vector{Function}}
     last_check::Float64
 end
 
 """
-    RecoveryAction
-Represents a healing action to be taken
+    create_self_healing_system()
+Initialize a new self-healing system
 """
-struct RecoveryAction
-    action_type::Symbol  # :restart, :reconfigure, :isolate, :repair
-    target::String
-    priority::Float64
-    estimated_impact::Float64
-    prerequisites::Vector{String}
-    validation_checks::Vector{Function}
-end
-
-"""
-    HealingStrategy
-Defines a strategy for healing system components
-"""
-struct HealingStrategy
-    conditions::Vector{Function}
-    actions::Vector{RecoveryAction}
-    success_metrics::Vector{Function}
-    fallback_actions::Vector{RecoveryAction}
-    max_attempts::Int
-end
-
-"""
-    SelfHealingSystem
-Main system for managing self-healing capabilities
-"""
-mutable struct SelfHealingSystem
-    components::Dict{String, SystemHealth}
-    strategies::Dict{String, HealingStrategy}
-    active_recoveries::Dict{String, Vector{RecoveryAction}}
-    recovery_history::CircularBuffer{Dict{String, Any}}
-    health_network::SimpleDiGraph
-    symbiotic_relationships::SymbioticNetwork
-end
-
-"""
-    create_self_healing_system(history_size::Int=1000)
-Create a new self-healing system
-"""
-function create_self_healing_system(history_size::Int=1000)
+function create_self_healing_system()
     SelfHealingSystem(
-        Dict{String, SystemHealth}(),
-        Dict{String, HealingStrategy}(),
-        Dict{String, Vector{RecoveryAction}}(),
-        CircularBuffer{Dict{String, Any}}(history_size),
-        SimpleDiGraph(0),
-        create_symbiotic_network()
-    )
-end
-
-"""
-    register_component!(system::SelfHealingSystem, component_id::String, metrics::Dict{String, Float64})
-Register a component for health monitoring
-"""
-function register_component!(system::SelfHealingSystem, component_id::String, metrics::Dict{String, Float64})
-    # Create health tracking
-    health = SystemHealth(
-        component_id,
-        metrics,
-        Dict(k => 0.8 for k in keys(metrics)),  # Default thresholds
-        CircularBuffer{Dict{String, Float64}}(100),
-        :healthy,
+        Dict{String, Dict{String, Float64}}(),
+        CircularBuffer{Dict{String, Float64}}(1000),
+        Dict{String, Vector{Function}}(),
+        Dict{String, Tuple{Float64, Float64}}(),
+        Dict{String, Float64}(),
+        Dict{String, Vector{Function}}(),
         time()
     )
-    
-    system.components[component_id] = health
-    
-    # Update health network
-    add_vertex!(system.health_network)
-    
-    # Add to symbiotic network
-    subsystem = SubSystem(
-        component_id,
-        Dict("health" => 1.0),
-        1.0,
-        Dict{String, SymbioticRelation}(),
-        0.1
-    )
-    add_subsystem!(system.symbiotic_relationships, subsystem)
-    
-    return (success=true, component_id=component_id)
 end
 
 """
-    create_healing_strategy(conditions::Vector{Function}, actions::Vector{RecoveryAction})
-Create a new healing strategy
+    register_component!(system::SelfHealingSystem, id::String, metrics::Dict{String, Float64})
+Register a component for health monitoring
 """
-function create_healing_strategy(conditions::Vector{Function}, actions::Vector{RecoveryAction})
-    HealingStrategy(
-        conditions,
-        actions,
-        Function[],  # Empty success metrics initially
-        RecoveryAction[],  # Empty fallback actions
-        3  # Default max attempts
-    )
+function register_component!(system::SelfHealingSystem, id::String, metrics::Dict{String, Float64})
+    system.components[id] = metrics
+    system.homeostasis_ranges[id] = (0.7, 1.0)  # Default healthy range
+    system.anomaly_thresholds[id] = 0.3  # Default anomaly threshold
+    
+    # Default recovery strategies
+    system.recovery_strategies[id] = [
+        (component) -> reset_component_state!(component),
+        (component) -> adjust_component_parameters!(component),
+        (component) -> reinitialize_component!(component)
+    ]
 end
 
 """
     monitor_health!(system::SelfHealingSystem)
-Monitor the health of all registered components
+Monitor component health using homeostasis principles
 """
 function monitor_health!(system::SelfHealingSystem)
-    status_changes = Dict{String, Symbol}()
+    health_status = Dict{String, Symbol}()
+    current_time = time()
     
-    for (component_id, health) in system.components
-        # Calculate current health metrics
-        current_metrics = Dict{String, Float64}()
+    for (id, metrics) in system.components
+        avg_health = mean(values(metrics))
+        (min_health, max_health) = system.homeostasis_ranges[id]
         
-        for (metric, value) in health.metrics
-            threshold = health.thresholds[metric]
-            current_metrics[metric] = value
-            
-            # Check if metric is below threshold
-            if value < threshold
-                if health.status == :healthy
-                    health.status = :degraded
-                elseif health.status == :degraded && value < threshold * 0.5
-                    health.status = :critical
-                end
+        # Store health history
+        push!(system.health_history, Dict(id => avg_health))
+        
+        # Determine health status using homeostatic principles
+        if avg_health < min_health
+            if avg_health < system.anomaly_thresholds[id]
+                health_status[id] = :critical
+            else
+                health_status[id] = :degraded
             end
+        elseif avg_health > max_health
+            health_status[id] = :optimal
+        else
+            health_status[id] = :healthy
         end
         
-        # Update health history
-        push!(health.history, current_metrics)
-        
-        # Record status change if it occurred
-        if get(status_changes, component_id, health.status) != health.status
-            status_changes[component_id] = health.status
+        # Update component metrics based on homeostasis
+        for (metric, value) in metrics
+            target = (min_health + max_health) / 2
+            adjustment = (target - value) * 0.1  # Gradual adjustment
+            system.components[id][metric] += adjustment
         end
-        
-        health.last_check = time()
     end
     
-    return status_changes
+    system.last_check = current_time
+    return health_status
 end
 
 """
-    detect_anomalies(system::SelfHealingSystem, window_size::Int=20)
+    detect_anomalies(system::SelfHealingSystem)
 Detect anomalies in component behavior
 """
-function detect_anomalies(system::SelfHealingSystem, window_size::Int=20)
+function detect_anomalies(system::SelfHealingSystem)
     anomalies = Dict{String, Vector{String}}()
     
-    for (component_id, health) in system.components
+    # Get recent health history
+    recent_history = collect(Iterators.take(system.health_history, 10))
+    
+    for (id, metrics) in system.components
         component_anomalies = String[]
         
-        if length(health.history) < window_size
-            continue
-        end
-        
-        # Analyze recent history
-        recent_history = collect(Iterators.take(health.history, window_size))
-        
-        for metric in keys(health.metrics)
-            values = [h[metric] for h in recent_history]
-            
-            # Statistical anomaly detection
-            mean_val = mean(values)
-            std_val = std(values)
-            
-            current_val = health.metrics[metric]
-            if abs(current_val - mean_val) > 2 * std_val
+        # Check each metric against threshold
+        for (metric, value) in metrics
+            if value < system.anomaly_thresholds[id]
                 push!(component_anomalies, metric)
             end
         end
         
+        # Check for sudden changes using recent history
+        if !isempty(recent_history)
+            metric_changes = [
+                abs(
+                    get(hist, id, 0.0) -
+                    get(system.components[id], metric, 0.0)
+                )
+                for hist in recent_history
+                for metric in keys(system.components[id])
+            ]
+            
+            if any(change > 0.3 for change in metric_changes)
+                push!(component_anomalies, "sudden_change")
+            end
+        end
+        
         if !isempty(component_anomalies)
-            anomalies[component_id] = component_anomalies
+            anomalies[id] = component_anomalies
         end
     end
     
@@ -204,46 +139,20 @@ end
 Initiate recovery actions for a component
 """
 function initiate_recovery!(system::SelfHealingSystem, component_id::String)
-    if !haskey(system.components, component_id) || !haskey(system.strategies, component_id)
-        return (success=false, reason="Component or strategy not found")
+    if !haskey(system.components, component_id)
+        return (success=false, reason="Component not found")
     end
     
-    health = system.components[component_id]
-    strategy = system.strategies[component_id]
-    
-    # Check if recovery is already in progress
-    if haskey(system.active_recoveries, component_id)
-        return (success=false, reason="Recovery already in progress")
+    # Get recovery strategies for the component
+    strategies = get(system.recovery_strategies, component_id, Function[])
+    if isempty(strategies)
+        return (success=false, reason="No recovery strategies available")
     end
     
-    # Find applicable recovery actions
-    applicable_actions = RecoveryAction[]
-    for condition in strategy.conditions
-        if condition(health)
-            # Add corresponding actions
-            append!(applicable_actions, strategy.actions)
-        end
-    end
+    # Initialize recovery sequence
+    system.active_recoveries[component_id] = copy(strategies)
     
-    if isempty(applicable_actions)
-        return (success=false, reason="No applicable recovery actions")
-    end
-    
-    # Sort actions by priority
-    sort!(applicable_actions, by=a -> a.priority, rev=true)
-    
-    # Initialize recovery
-    system.active_recoveries[component_id] = applicable_actions
-    
-    # Record recovery initiation
-    push!(system.recovery_history, Dict(
-        "component_id" => component_id,
-        "timestamp" => time(),
-        "initial_status" => health.status,
-        "actions" => length(applicable_actions)
-    ))
-    
-    return (success=true, actions=length(applicable_actions))
+    return (success=true, strategies=length(strategies))
 end
 
 """
@@ -261,182 +170,90 @@ function execute_recovery_action!(system::SelfHealingSystem, component_id::Strin
         return (success=false, reason="No more actions")
     end
     
-    # Get next action
+    # Execute next action
     action = popfirst!(actions)
-    
-    # Check prerequisites
-    for prereq in action.prerequisites
-        if !haskey(system.components, prereq)
-            return (success=false, reason="Prerequisite not met: $prereq")
-        end
-        if system.components[prereq].status == :critical
-            return (success=false, reason="Prerequisite in critical state: $prereq")
-        end
-    end
-    
-    # Execute action based on type
-    result = execute_action(action, system.components[component_id])
-    
-    # Validate action
-    validation_success = all(check(system.components[component_id]) for check in action.validation_checks)
-    
-    if !validation_success && !isempty(system.strategies[component_id].fallback_actions)
-        # Apply fallback action
-        fallback = first(system.strategies[component_id].fallback_actions)
-        result = execute_action(fallback, system.components[component_id])
-    end
-    
-    # Update recovery history
-    push!(system.recovery_history, Dict(
-        "component_id" => component_id,
-        "action_type" => action.action_type,
-        "timestamp" => time(),
-        "success" => validation_success
-    ))
-    
-    return (success=true, validation=validation_success)
-end
-
-"""
-    execute_action(action::RecoveryAction, health::SystemHealth)
-Execute a specific recovery action
-"""
-function execute_action(action::RecoveryAction, health::SystemHealth)
-    if action.action_type == :restart
-        # Simulate restart by resetting metrics
-        for (metric, _) in health.metrics
-            health.metrics[metric] = 1.0
-        end
-        health.status = :healthy
+    try
+        action(system.components[component_id])
         
-    elseif action.action_type == :reconfigure
-        # Apply new thresholds
-        for (metric, value) in health.metrics
-            health.thresholds[metric] = max(0.7, health.thresholds[metric] * 0.9)
+        # Check if recovery was successful
+        if mean(values(system.components[component_id])) > 
+           system.anomaly_thresholds[component_id]
+            delete!(system.active_recoveries, component_id)
+            return (success=true, status=:recovered)
         end
         
-    elseif action.action_type == :isolate
-        # Mark as isolated
-        health.status = :isolated
-        
-    elseif action.action_type == :repair
-        # Attempt repair by gradual metric improvement
-        for (metric, value) in health.metrics
-            if value < health.thresholds[metric]
-                health.metrics[metric] = min(1.0, value * 1.2)
-            end
-        end
+        return (success=true, status=:in_progress)
+    catch e
+        return (success=false, reason="Action failed: $e")
     end
-    
-    return (success=true, action=action.action_type)
-end
-
-"""
-    analyze_recovery_patterns(system::SelfHealingSystem)
-Analyze patterns in recovery actions and their effectiveness
-"""
-function analyze_recovery_patterns(system::SelfHealingSystem)
-    if isempty(system.recovery_history)
-        return Dict()
-    end
-    
-    patterns = Dict{Symbol, Dict{String, Float64}}()
-    
-    # Group by action type
-    for entry in system.recovery_history
-        action_type = entry["action_type"]
-        
-        if !haskey(patterns, action_type)
-            patterns[action_type] = Dict(
-                "count" => 0,
-                "success_rate" => 0.0,
-                "avg_impact" => 0.0
-            )
-        end
-        
-        patterns[action_type]["count"] += 1
-        patterns[action_type]["success_rate"] += entry["success"] ? 1.0 : 0.0
-    end
-    
-    # Calculate statistics
-    for (action_type, stats) in patterns
-        stats["success_rate"] /= stats["count"]
-    end
-    
-    return patterns
 end
 
 """
     optimize_healing_strategies!(system::SelfHealingSystem)
-Optimize healing strategies based on observed patterns
+Optimize healing strategies based on their effectiveness
 """
 function optimize_healing_strategies!(system::SelfHealingSystem)
-    patterns = analyze_recovery_patterns(system)
+    optimizations = Dict{String, Any}()
     
-    for (component_id, strategy) in system.strategies
-        if !haskey(system.components, component_id)
-            continue
-        end
+    for (id, metrics) in system.components
+        # Analyze recovery effectiveness
+        health_trend = [
+            get(hist, id, 0.0)
+            for hist in system.health_history
+        ]
         
-        # Analyze component's recovery history
-        component_entries = filter(
-            e -> e["component_id"] == component_id,
-            collect(system.recovery_history)
-        )
-        
-        if isempty(component_entries)
-            continue
-        end
-        
-        # Calculate action effectiveness
-        action_effectiveness = Dict{Symbol, Float64}()
-        for entry in component_entries
-            action_type = entry["action_type"]
-            if !haskey(action_effectiveness, action_type)
-                action_effectiveness[action_type] = 0.0
+        if !isempty(health_trend)
+            effectiveness = (last(health_trend) - first(health_trend)) /
+                          max(1, length(health_trend))
+            
+            # Adjust homeostasis ranges based on effectiveness
+            (min_health, max_health) = system.homeostasis_ranges[id]
+            if effectiveness > 0.1
+                # Increase expectations
+                new_min = min(min_health + 0.05, 0.9)
+                new_max = min(max_health + 0.05, 1.0)
+                system.homeostasis_ranges[id] = (new_min, new_max)
+            elseif effectiveness < -0.1
+                # Decrease expectations
+                new_min = max(min_health - 0.05, 0.5)
+                new_max = max(max_health - 0.05, 0.6)
+                system.homeostasis_ranges[id] = (new_min, new_max)
             end
-            action_effectiveness[action_type] += entry["success"] ? 1.0 : 0.0
-        end
-        
-        # Normalize effectiveness
-        for (action_type, success_count) in action_effectiveness
-            total_actions = count(e -> e["action_type"] == action_type, component_entries)
-            action_effectiveness[action_type] /= total_actions
-        end
-        
-        # Sort actions by effectiveness
-        sorted_actions = sort(
-            collect(action_effectiveness),
-            by=x -> x[2],
-            rev=true
-        )
-        
-        # Update strategy actions
-        if !isempty(sorted_actions)
-            most_effective = sorted_actions[1][1]
-            least_effective = sorted_actions[end][1]
             
-            # Promote effective actions
-            strategy.actions = filter(
-                a -> a.action_type == most_effective,
-                strategy.actions
-            )
-            
-            # Move less effective actions to fallback
-            strategy.fallback_actions = filter(
-                a -> a.action_type == least_effective,
-                strategy.actions
+            optimizations[id] = Dict(
+                "effectiveness" => effectiveness,
+                "new_range" => system.homeostasis_ranges[id]
             )
         end
     end
     
-    return patterns
+    return optimizations
 end
 
-export SelfHealingSystem, SystemHealth, RecoveryAction, HealingStrategy,
-       create_self_healing_system, register_component!, create_healing_strategy,
-       monitor_health!, detect_anomalies, initiate_recovery!,
-       execute_recovery_action!, analyze_recovery_patterns,
+# Helper functions
+function reset_component_state!(component::Dict{String, Float64})
+    for metric in keys(component)
+        component[metric] = 1.0
+    end
+end
+
+function adjust_component_parameters!(component::Dict{String, Float64})
+    for (metric, value) in component
+        if value < 0.7
+            component[metric] = 0.7
+        end
+    end
+end
+
+function reinitialize_component!(component::Dict{String, Float64})
+    empty!(component)
+    component["health"] = 1.0
+    component["stability"] = 1.0
+end
+
+export SelfHealingSystem, create_self_healing_system,
+       register_component!, monitor_health!, detect_anomalies,
+       initiate_recovery!, execute_recovery_action!,
        optimize_healing_strategies!
 
 end # module

@@ -1,139 +1,257 @@
 module HomeostasisControl
 
-using DifferentialEquations
-using DataStructures
 using Statistics
+using DataStructures
 
 """
-    SystemVariable
-Represents a controlled variable in the system
+    HomeostaticSystem
+System that maintains stability through feedback mechanisms
 """
-struct SystemVariable
-    name::String
-    current_value::Float64
-    setpoint::Float64
-    tolerance::Float64
-    response_time::Float64
+mutable struct HomeostaticSystem
+    variables::Dict{String, Float64}
+    setpoints::Dict{String, Float64}
+    tolerances::Dict{String, Float64}
+    feedback_gains::Dict{String, Float64}
+    control_history::CircularBuffer{Dict{String, Float64}}
+    adaptation_rate::Float64
 end
 
 """
-    FeedbackController
-Controls a system variable using feedback mechanisms
+    create_homeostatic_system()
+Initialize a new homeostatic system
 """
-mutable struct FeedbackController
-    variable::SystemVariable
-    integral_error::Float64
-    last_error::Float64
-    kp::Float64  # Proportional gain
-    ki::Float64  # Integral gain
-    kd::Float64  # Derivative gain
-    history::CircularBuffer{Float64}
-end
-
-"""
-    create_controller(var::SystemVariable, history_size::Int=100)
-Create a new feedback controller for a system variable
-"""
-function create_controller(var::SystemVariable, history_size::Int=100)
-    FeedbackController(
-        var,
-        0.0,
-        0.0,
-        1.0,  # Default proportional gain
-        0.1,  # Default integral gain
-        0.01, # Default derivative gain
-        CircularBuffer{Float64}(history_size)
+function create_homeostatic_system()
+    HomeostaticSystem(
+        Dict{String, Float64}(),
+        Dict{String, Float64}(),
+        Dict{String, Float64}(),
+        Dict{String, Float64}(),
+        CircularBuffer{Dict{String, Float64}}(1000),
+        0.1
     )
 end
 
 """
-    calculate_control_signal(controller::FeedbackController, current_value::Float64, dt::Float64)
-Calculate control signal using PID control
+    add_controlled_variable!(
+        system::HomeostaticSystem,
+        name::String,
+        initial_value::Float64,
+        setpoint::Float64,
+        tolerance::Float64
+    )
+Add a new variable to be controlled by homeostasis
 """
-function calculate_control_signal(controller::FeedbackController, current_value::Float64, dt::Float64)
-    error = controller.variable.setpoint - current_value
+function add_controlled_variable!(
+    system::HomeostaticSystem,
+    name::String,
+    initial_value::Float64,
+    setpoint::Float64,
+    tolerance::Float64
+)
+    system.variables[name] = initial_value
+    system.setpoints[name] = setpoint
+    system.tolerances[name] = tolerance
+    system.feedback_gains[name] = 1.0
     
-    # PID calculations
-    p_term = controller.kp * error
-    
-    controller.integral_error += error * dt
-    i_term = controller.ki * controller.integral_error
-    
-    d_term = controller.kd * (error - controller.last_error) / dt
-    
-    # Update controller state
-    controller.last_error = error
-    push!(controller.history, current_value)
-    
-    return p_term + i_term + d_term
+    return (success=true, variable=name)
 end
 
 """
-    check_stability(controller::FeedbackController, window_size::Int=20)
-Check if the controlled variable is stable
+    regulate!(system::HomeostaticSystem)
+Apply homeostatic regulation to maintain stability
 """
-function check_stability(controller::FeedbackController, window_size::Int=20)
-    if length(controller.history) < window_size
-        return (stable=false, confidence=0.0)
+function regulate!(system::HomeostaticSystem)
+    corrections = Dict{String, Float64}()
+    stability = Dict{String, Float64}()
+    
+    for (var, value) in system.variables
+        if haskey(system.setpoints, var)
+            setpoint = system.setpoints[var]
+            tolerance = get(system.tolerances, var, 0.1)
+            gain = get(system.feedback_gains, var, 1.0)
+            
+            # Calculate error
+            error = setpoint - value
+            
+            # Calculate correction based on feedback control
+            correction = gain * error
+            
+            # Apply correction with adaptation rate
+            new_value = value + system.adaptation_rate * correction
+            
+            # Apply correction within bounds
+            system.variables[var] = clamp(new_value, 0.0, 2.0 * setpoint)
+            
+            # Record correction
+            corrections[var] = correction
+            
+            # Calculate stability metric
+            stability[var] = 1.0 - min(abs(error) / tolerance, 1.0)
+        end
     end
     
-    recent_values = collect(Iterators.take(controller.history, window_size))
-    mean_value = mean(recent_values)
-    std_dev = std(recent_values)
+    # Record state
+    push!(system.control_history, Dict(
+        "values" => copy(system.variables),
+        "corrections" => corrections,
+        "stability" => stability
+    ))
     
-    is_stable = std_dev < controller.variable.tolerance
-    confidence = 1.0 - min(1.0, std_dev / controller.variable.tolerance)
-    
-    return (stable=is_stable, confidence=confidence)
+    return (
+        success=true,
+        corrections=corrections,
+        stability=stability,
+        overall_stability=mean(values(stability))
+    )
 end
 
 """
-    adapt_controller!(controller::FeedbackController, performance_metric::Float64)
-Adapt controller parameters based on performance
+    adapt_setpoints!(system::HomeostaticSystem)
+Adapt setpoints based on long-term trends
 """
-function adapt_controller!(controller::FeedbackController, performance_metric::Float64)
-    # Adjust gains based on performance
-    if performance_metric < 0.5
-        # Poor performance - increase responsiveness
-        controller.kp *= 1.1
-        controller.ki *= 1.1
-    elseif performance_metric > 0.9
-        # Good performance - fine tune
-        controller.kp *= 0.95
-        controller.ki *= 0.95
-    end
+function adapt_setpoints!(system::HomeostaticSystem)
+    adaptations = Dict{String, Float64}()
     
-    # Ensure gains stay within reasonable bounds
-    controller.kp = clamp(controller.kp, 0.1, 10.0)
-    controller.ki = clamp(controller.ki, 0.01, 1.0)
-    controller.kd = clamp(controller.kd, 0.001, 0.1)
-end
-
-"""
-    homeostatic_regulation(controllers::Vector{FeedbackController}, dt::Float64)
-Perform homeostatic regulation across multiple controllers
-"""
-function homeostatic_regulation(controllers::Vector{FeedbackController}, dt::Float64)
-    control_signals = Dict{String, Float64}()
-    system_state = Dict{String, NamedTuple}()
-    
-    for controller in controllers
-        current_value = controller.variable.current_value
-        signal = calculate_control_signal(controller, current_value, dt)
-        stability = check_stability(controller)
+    # Analyze recent history
+    if !isempty(system.control_history)
+        recent_states = [
+            state["values"]
+            for state in Iterators.take(system.control_history, 100)
+        ]
         
-        control_signals[controller.variable.name] = signal
-        system_state[controller.variable.name] = stability
-        
-        # Adapt controller if needed
-        adapt_controller!(controller, stability.confidence)
+        for var in keys(system.setpoints)
+            if all(haskey(state, var) for state in recent_states)
+                values = [state[var] for state in recent_states]
+                current_setpoint = system.setpoints[var]
+                
+                # Calculate trend
+                if length(values) >= 2
+                    trend = (last(values) - first(values)) / length(values)
+                    
+                    # Adapt setpoint if consistent trend
+                    if abs(trend) > 0.01
+                        adaptation = trend * system.adaptation_rate
+                        system.setpoints[var] += adaptation
+                        adaptations[var] = adaptation
+                    end
+                end
+                
+                # Adjust feedback gain based on stability
+                stability = 1.0 - std(values) / mean(values)
+                if stability < 0.8
+                    system.feedback_gains[var] *= 1.1  # Increase control
+                elseif stability > 0.95
+                    system.feedback_gains[var] *= 0.9  # Decrease control
+                end
+            end
+        end
     end
     
-    return (control_signals=control_signals, system_state=system_state)
+    return adaptations
 end
 
-export SystemVariable, FeedbackController, create_controller,
-       calculate_control_signal, check_stability, adapt_controller!,
-       homeostatic_regulation
+"""
+    optimize_control!(system::HomeostaticSystem)
+Optimize control parameters based on performance
+"""
+function optimize_control!(system::HomeostaticSystem)
+    if isempty(system.control_history)
+        return (success=false, reason="No control history")
+    end
+    
+    optimizations = Dict{String, Any}()
+    
+    # Analyze stability trends
+    recent_states = collect(Iterators.take(system.control_history, 100))
+    
+    for var in keys(system.setpoints)
+        if all(haskey(state["stability"], var) for state in recent_states)
+            stabilities = [state["stability"][var] for state in recent_states]
+            corrections = [abs(state["corrections"][var]) for state in recent_states]
+            
+            # Calculate performance metrics
+            avg_stability = mean(stabilities)
+            correction_efficiency = avg_stability / (mean(corrections) + 1e-10)
+            
+            # Optimize control parameters
+            if avg_stability < 0.8
+                # Increase control if unstable
+                system.feedback_gains[var] *= 1.1
+                system.tolerances[var] *= 0.9
+            elseif correction_efficiency < 0.5
+                # Decrease control if inefficient
+                system.feedback_gains[var] *= 0.9
+                system.tolerances[var] *= 1.1
+            end
+            
+            # Adjust adaptation rate
+            if std(stabilities) > 0.2
+                system.adaptation_rate *= 0.9  # Slow down if volatile
+            elseif avg_stability < 0.7
+                system.adaptation_rate *= 1.1  # Speed up if consistently unstable
+            end
+            
+            optimizations[var] = Dict(
+                "stability" => avg_stability,
+                "efficiency" => correction_efficiency,
+                "gain" => system.feedback_gains[var],
+                "tolerance" => system.tolerances[var]
+            )
+        end
+    end
+    
+    return (
+        success=true,
+        optimizations=optimizations,
+        adaptation_rate=system.adaptation_rate
+    )
+end
+
+"""
+    analyze_stability(system::HomeostaticSystem)
+Analyze overall system stability
+"""
+function analyze_stability(system::HomeostaticSystem)
+    metrics = Dict{String, Any}()
+    
+    for var in keys(system.variables)
+        if haskey(system.setpoints, var)
+            # Calculate current deviation
+            error = abs(system.variables[var] - system.setpoints[var])
+            tolerance = get(system.tolerances, var, 0.1)
+            
+            # Calculate stability metrics
+            metrics[var] = Dict(
+                "error" => error,
+                "relative_error" => error / system.setpoints[var],
+                "within_tolerance" => error <= tolerance,
+                "stability" => 1.0 - min(error / tolerance, 1.0)
+            )
+        end
+    end
+    
+    # Calculate overall system stability
+    if !isempty(metrics)
+        overall_stability = mean(
+            get(m, "stability", 0.0)
+            for m in values(metrics)
+        )
+        
+        metrics["overall"] = Dict(
+            "stability" => overall_stability,
+            "variables_in_tolerance" => count(
+                get(m, "within_tolerance", false)
+                for m in values(metrics)
+            )
+        )
+    end
+    
+    return metrics
+end
+
+export HomeostaticSystem, create_homeostatic_system,
+       add_controlled_variable!, regulate!,
+       adapt_setpoints!, optimize_control!,
+       analyze_stability
 
 end # module

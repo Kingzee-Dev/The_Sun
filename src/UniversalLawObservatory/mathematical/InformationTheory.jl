@@ -3,6 +3,8 @@ module InformationTheory
 using StatsBase
 using LinearAlgebra
 using Distributions
+using Statistics
+using DataStructures
 
 """
     Message
@@ -28,6 +30,48 @@ mutable struct Channel
 end
 
 """
+    InformationSystem
+System for analyzing and optimizing information flow
+"""
+mutable struct InformationSystem
+    channels::Dict{String, Channel{Any}}
+    entropies::Dict{String, CircularBuffer{Float64}}
+    mutual_information::Dict{Tuple{String, String}, CircularBuffer{Float64}}
+    channel_capacities::Dict{String, Float64}
+    noise_levels::Dict{String, Float64}
+    compression_ratios::Dict{String, Float64}
+end
+
+"""
+    create_information_system()
+Initialize a new information system
+"""
+function create_information_system()
+    InformationSystem(
+        Dict{String, Channel{Any}}(),
+        Dict{String, CircularBuffer{Float64}}(),
+        Dict{Tuple{String, String}, CircularBuffer{Float64}}(),
+        Dict{String, Float64}(),
+        Dict{String, Float64}(),
+        Dict{String, Float64}()
+    )
+end
+
+"""
+    add_channel!(system::InformationSystem, channel_id::String, capacity::Float64)
+Add a new information channel to the system
+"""
+function add_channel!(system::InformationSystem, channel_id::String, capacity::Float64)
+    system.channels[channel_id] = Channel{Any}(100)
+    system.entropies[channel_id] = CircularBuffer{Float64}(1000)
+    system.channel_capacities[channel_id] = capacity
+    system.noise_levels[channel_id] = 0.1
+    system.compression_ratios[channel_id] = 1.0
+    
+    return (success=true, channel=channel_id)
+end
+
+"""
     calculate_entropy(data::Vector{T}) where T
 Calculate the Shannon entropy of a data sequence
 """
@@ -45,171 +89,255 @@ function calculate_entropy(data::Vector{T}) where T
 end
 
 """
-    create_message(content::T; priority::Float64=1.0) where T
-Create a new message with calculated information properties
+    process_data!(system::InformationSystem, channel_id::String, data::Any)
+Process data through an information channel
 """
-function create_message(content::T; priority::Float64=1.0) where T
-    # Calculate entropy based on content type
-    entropy = if content isa AbstractVector
-        calculate_entropy(content)
-    elseif content isa AbstractString
-        calculate_entropy(collect(content))
-    else
-        0.0  # Default for other types
+function process_data!(system::InformationSystem, channel_id::String, data::Any)
+    if !haskey(system.channels, channel_id)
+        return (success=false, reason="Channel not found")
     end
     
-    # Estimate compression ratio
-    compression_ratio = estimate_compression_ratio(content)
+    # Convert data to sequence
+    sequence = isa(data, Vector) ? data : [data]
     
-    Message(content, entropy, compression_ratio, priority)
-end
-
-"""
-    create_channel(capacity::Float64, noise_level::Float64)
-Create a new communication channel
-"""
-function create_channel(capacity::Float64, noise_level::Float64)
-    Channel(
-        capacity,
-        noise_level,
-        0.0,
-        1.0 - noise_level,
-        Message[]
+    # Calculate entropy
+    entropy = calculate_entropy(sequence)
+    push!(system.entropies[channel_id], entropy)
+    
+    # Apply noise and compression
+    processed_data = apply_channel_effects(
+        sequence,
+        system.noise_levels[channel_id],
+        system.compression_ratios[channel_id]
+    )
+    
+    # Check channel capacity
+    if entropy > system.channel_capacities[channel_id]
+        # Apply rate limiting
+        processed_data = limit_information_rate(
+            processed_data,
+            system.channel_capacities[channel_id]
+        )
+    end
+    
+    # Transmit processed data
+    put!(system.channels[channel_id], processed_data)
+    
+    return (
+        success=true,
+        entropy=entropy,
+        processed_data=processed_data
     )
 end
 
 """
-    estimate_compression_ratio(content::T) where T
-Estimate potential compression ratio for content
+    calculate_mutual_information!(system::InformationSystem, channel1::String, channel2::String)
+Calculate mutual information between two channels
 """
-function estimate_compression_ratio(content::T) where T
-    if content isa AbstractString
-        # Simple repetition-based estimation
-        original_length = length(content)
-        unique_chars = length(unique(collect(content)))
-        theoretical_bits = ceil(log2(unique_chars)) * original_length / 8
-        return theoretical_bits / original_length
-    elseif content isa AbstractVector
-        # Entropy-based estimation
-        H = calculate_entropy(content)
-        theoretical_bits = H * length(content)
-        actual_bits = 8 * length(content)  # Assuming 8 bits per element
-        return theoretical_bits / actual_bits
-    else
-        return 1.0  # No compression for unknown types
+function calculate_mutual_information!(system::InformationSystem, channel1::String, channel2::String)
+    if !haskey(system.channels, channel1) || !haskey(system.channels, channel2)
+        return (success=false, reason="Channel not found")
     end
+    
+    # Get recent data from channels
+    data1 = collect(Iterators.take(system.channels[channel1], 100))
+    data2 = collect(Iterators.take(system.channels[channel2], 100))
+    
+    if isempty(data1) || isempty(data2)
+        return (success=false, reason="Insufficient data")
+    end
+    
+    # Calculate joint and marginal entropies
+    h1 = calculate_entropy(data1)
+    h2 = calculate_entropy(data2)
+    h_joint = calculate_joint_entropy(data1, data2)
+    
+    # Calculate mutual information
+    mi = h1 + h2 - h_joint
+    
+    # Store result
+    key = (channel1, channel2)
+    if !haskey(system.mutual_information, key)
+        system.mutual_information[key] = CircularBuffer{Float64}(1000)
+    end
+    push!(system.mutual_information[key], mi)
+    
+    return (success=true, mutual_information=mi)
 end
 
 """
-    transmit_message(channel::Channel, message::Message)
-Attempt to transmit a message through the channel
+    optimize_channels!(system::InformationSystem)
+Optimize channel parameters for better information flow
 """
-function transmit_message(channel::Channel, message::Message)
-    if channel.current_load + message.entropy > channel.capacity
-        return (success=false, reason="Channel capacity exceeded")
-    end
+function optimize_channels!(system::InformationSystem)
+    optimizations = Dict{String, Any}()
     
-    # Apply noise effects
-    success_probability = channel.reliability * (1.0 - channel.noise_level)^message.entropy
-    transmission_success = rand() < success_probability
-    
-    if transmission_success
-        channel.current_load += message.entropy
-        push!(channel.message_queue, message)
-        return (success=true, corruption_level=0.0)
-    else
-        corruption_level = rand() * channel.noise_level
-        return (success=false, corruption_level=corruption_level)
-    end
-end
-
-"""
-    optimize_channel(channel::Channel)
-Optimize channel parameters based on usage patterns
-"""
-function optimize_channel(channel::Channel)
-    if isempty(channel.message_queue)
-        return channel
-    end
-    
-    # Analyze message patterns
-    avg_entropy = mean(m.entropy for m in channel.message_queue)
-    max_entropy = maximum(m.entropy for m in channel.message_queue)
-    
-    # Adjust capacity if needed
-    if channel.current_load > 0.8 * channel.capacity
-        channel.capacity *= 1.2  # Increase capacity by 20%
-    elseif channel.current_load < 0.2 * channel.capacity
-        channel.capacity *= 0.8  # Decrease capacity by 20%
-    end
-    
-    # Optimize reliability
-    channel.reliability = max(0.5, min(1.0, 1.0 - channel.noise_level))
-    
-    return channel
-end
-
-"""
-    calculate_mutual_information(X::Vector{T}, Y::Vector{T}) where T
-Calculate mutual information between two sequences
-"""
-function calculate_mutual_information(X::Vector{T}, Y::Vector{T}) where T
-    if length(X) != length(Y)
-        throw(ArgumentError("Sequences must have equal length"))
-    end
-    
-    # Calculate individual and joint probabilities
-    px = countmap(X)
-    py = countmap(Y)
-    pxy = countmap(zip(X, Y))
-    
-    n = length(X)
-    mi = 0.0
-    
-    for (x, y) in zip(X, Y)
-        pxy_val = pxy[(x, y)] / n
-        px_val = px[x] / n
-        py_val = py[y] / n
+    for channel_id in keys(system.channels)
+        # Get recent entropy values
+        entropies = collect(system.entropies[channel_id])
         
-        if pxy_val > 0
-            mi += pxy_val * log2(pxy_val / (px_val * py_val))
+        if !isempty(entropies)
+            avg_entropy = mean(entropies)
+            capacity = system.channel_capacities[channel_id]
+            
+            # Optimize compression ratio
+            utilization = avg_entropy / capacity
+            if utilization > 0.9
+                # Increase compression if near capacity
+                system.compression_ratios[channel_id] *= 1.1
+            elseif utilization < 0.5
+                # Decrease compression if underutilized
+                system.compression_ratios[channel_id] = max(
+                    1.0,
+                    system.compression_ratios[channel_id] * 0.9
+                )
+            end
+            
+            # Optimize noise handling
+            entropy_std = std(entropies)
+            if entropy_std > 0.2 * avg_entropy
+                # Increase noise reduction if variable
+                system.noise_levels[channel_id] *= 0.9
+            else
+                # Relax noise reduction if stable
+                system.noise_levels[channel_id] = min(
+                    0.2,
+                    system.noise_levels[channel_id] * 1.1
+                )
+            end
+            
+            optimizations[channel_id] = Dict(
+                "utilization" => utilization,
+                "compression_ratio" => system.compression_ratios[channel_id],
+                "noise_level" => system.noise_levels[channel_id]
+            )
         end
     end
     
-    return mi
+    return optimizations
 end
 
 """
-    optimize_information_flow(messages::Vector{Message}, channel::Channel)
-Optimize information flow through the channel
+    analyze_information_flow(system::InformationSystem)
+Analyze overall information flow in the system
 """
-function optimize_information_flow(messages::Vector{Message}, channel::Channel)
-    if isempty(messages)
-        return channel
+function analyze_information_flow(system::InformationSystem)
+    metrics = Dict{String, Any}()
+    
+    # Calculate channel-specific metrics
+    for channel_id in keys(system.channels)
+        entropies = collect(system.entropies[channel_id])
+        
+        if !isempty(entropies)
+            metrics[channel_id] = Dict(
+                "avg_entropy" => mean(entropies),
+                "entropy_std" => std(entropies),
+                "capacity_utilization" => mean(entropies) / system.channel_capacities[channel_id],
+                "compression_efficiency" => 1.0 / system.compression_ratios[channel_id],
+                "noise_resistance" => 1.0 - system.noise_levels[channel_id]
+            )
+        end
     end
     
-    # Sort messages by priority and entropy
-    sorted_messages = sort(messages, by=m -> m.priority * (1.0 - m.entropy/channel.capacity), rev=true)
-    
-    # Clear current queue
-    empty!(channel.message_queue)
-    channel.current_load = 0.0
-    
-    # Attempt to transmit messages in optimal order
-    results = []
-    for message in sorted_messages
-        result = transmit_message(channel, message)
-        push!(results, (message=message, result=result))
+    # Calculate inter-channel metrics
+    for ((ch1, ch2), mi_values) in system.mutual_information
+        if !isempty(mi_values)
+            key = "$(ch1)_$(ch2)_coupling"
+            metrics[key] = Dict(
+                "mutual_information" => mean(mi_values),
+                "coupling_strength" => mean(mi_values) / min(
+                    system.channel_capacities[ch1],
+                    system.channel_capacities[ch2]
+                )
+            )
+        end
     end
     
-    # Optimize channel based on transmission results
-    optimize_channel(channel)
+    # Calculate overall system metrics
+    if !isempty(metrics)
+        total_capacity = sum(values(system.channel_capacities))
+        total_entropy = sum(
+            get(m, "avg_entropy", 0.0)
+            for m in values(metrics)
+            if isa(m, Dict) && haskey(m, "avg_entropy")
+        )
+        
+        metrics["system"] = Dict(
+            "total_capacity" => total_capacity,
+            "total_entropy" => total_entropy,
+            "efficiency" => total_entropy / total_capacity,
+            "channel_count" => length(system.channels)
+        )
+    end
     
-    return (channel=channel, results=results)
+    return metrics
 end
 
-export Message, Channel, create_message, create_channel,
-       transmit_message, optimize_channel, calculate_mutual_information,
-       optimize_information_flow
+# Helper functions
+function apply_channel_effects(data::Vector, noise_level::Float64, compression_ratio::Float64)
+    # Apply noise
+    noisy_data = map(data) do x
+        if isa(x, Number)
+            return x + randn() * noise_level * abs(x)
+        else
+            return x
+        end
+    end
+    
+    # Apply compression
+    if compression_ratio > 1.0
+        # Simple compression by sampling
+        step = round(Int, compression_ratio)
+        return noisy_data[1:step:end]
+    end
+    
+    return noisy_data
+end
+
+function limit_information_rate(data::Vector, capacity::Float64)
+    if isempty(data)
+        return data
+    end
+    
+    # Calculate current entropy
+    entropy = calculate_entropy(data)
+    
+    if entropy <= capacity
+        return data
+    end
+    
+    # Reduce information by quantization
+    if all(x -> isa(x, Number), data)
+        # For numerical data, use binning
+        bins = round(Int, 2^capacity)
+        min_val, max_val = extrema(data)
+        bin_size = (max_val - min_val) / bins
+        
+        return map(data) do x
+            bin = floor(Int, (x - min_val) / bin_size)
+            return min_val + (bin + 0.5) * bin_size
+        end
+    else
+        # For non-numerical data, use sampling
+        sample_rate = round(Int, entropy / capacity)
+        return data[1:sample_rate:end]
+    end
+end
+
+function calculate_joint_entropy(data1::Vector, data2::Vector)
+    n = min(length(data1), length(data2))
+    if n == 0
+        return 0.0
+    end
+    
+    # Create joint distribution
+    joint_data = [(data1[i], data2[i]) for i in 1:n]
+    return calculate_entropy(joint_data)
+end
+
+export Message, Channel, InformationSystem, create_message, create_channel,
+       create_information_system, add_channel!, process_data!,
+       transmit_message, optimize_channel, calculate_mutual_information!,
+       optimize_channels!, analyze_information_flow
 
 end # module
