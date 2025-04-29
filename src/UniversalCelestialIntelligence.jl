@@ -1,25 +1,31 @@
 module UniversalCelestialIntelligence
 
-using DataStructures
-using Statistics
-using Graphs
-using StatsBase
-using Dates
-using Random
+using DataStructures, Statistics, Graphs, StatsBase, Dates, Random
 
-# Core includes
+# Include and import core observatory functionality first
 include("UniversalLawObservatory.jl")
+using .UniversalLawObservatory: 
+    LawObservatory,
+    create_law_observatory,
+    apply_physical_laws!,
+    apply_biological_laws!,
+    apply_mathematical_laws!
 
-# Then load other modules
+# Then include other base modules
 include("InternetModule.jl")
 include("ResearchSessionManager/ResearchSessionManager.jl")
+include("SystemScanner.jl")
 
-using .UniversalLawObservatory
+# Import and re-export core functionality from UniversalLawObservatory
+export apply_physical_laws!, apply_biological_laws!, apply_mathematical_laws!
+
+# Import other modules
 using .InternetModule
 using .ResearchSessionManager
-
-include("SystemScanner.jl")
 using .SystemScanner
+
+# Include Scientific Researcher last since it depends on others
+include("ScientificResearcher/ScientificResearcher.jl")
 
 # Core domains include
 include("UniversalLawObservatory/patterns/EmergentDiscovery.jl")
@@ -66,9 +72,6 @@ using .SelfHealing
 using .Explainability
 using .CentralOrchestrator
 using .RealDataIngestion
-
-# Import the specific functions we need
-import UniversalLawObservatory: apply_physical_laws!, apply_biological_laws!, apply_mathematical_laws!
 
 """
     CelestialSystem

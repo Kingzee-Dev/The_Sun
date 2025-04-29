@@ -2,9 +2,11 @@ module MathematicalLaws
 
 using Statistics
 using LinearAlgebra
-using ..FractalArchitecture
-using ..ChaosTheory
-using ..InformationTheory
+
+# Import from parent module
+using ..FractalArchitecture: analyze_fractal_properties
+using ..ChaosTheory: analyze_attractor
+using ..InformationTheory: analyze_information_flow
 
 """
     apply_mathematical_laws!(observatory, data)
@@ -14,9 +16,14 @@ function apply_mathematical_laws!(observatory, data::Dict{String, Any})
     result_state = Dict{String, Any}()
     observations = Dict{String, Any}()
 
-    # Apply fractal laws
+    # Apply fractal laws with explicit error handling
     if haskey(data, "pattern")
-        result_state["fractal"] = analyze_fractal_properties(observatory.fractal_system, "main")
+        try
+            result_state["fractal"] = analyze_fractal_properties(observatory.fractal_system, "main")
+        catch e
+            @warn "Error applying fractal laws" exception=e
+            result_state["fractal"] = Dict{String,Any}()
+        end
     end
 
     # Apply chaos theory laws

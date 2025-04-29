@@ -6,7 +6,12 @@ using DifferentialEquations
 using Graphs
 using Distributions
 using Dates
-using UniversalLawObservatory
+
+# Import law application functions from parent module
+using ..UniversalCelestialIntelligence: 
+    apply_physical_laws!,
+    apply_biological_laws!,
+    apply_mathematical_laws!
 
 # Expand research domains to match available laws
 const DOMAINS = [

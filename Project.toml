@@ -1,6 +1,5 @@
 name = "UniversalCelestialIntelligence"
 uuid = "70901844-3783-4812-a513-7e0563b25e23"
-authors = ["Kingzee Chhachhi <ckingzee@gmail.com>"]
 version = "0.1.0"
 
 [deps]

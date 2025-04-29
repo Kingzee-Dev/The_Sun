@@ -482,6 +482,7 @@ function count_matches(data::Vector{Float64}, m::Int, r::Float64)
     return count / (n - m + 1)
 end
 
+# Export core types and functions
 export FractalSystem, create_fractal_system,
        add_pattern!, analyze_scaling!, generate_pattern!,
        analyze_fractal_properties, optimize_pattern!

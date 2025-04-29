@@ -2,9 +2,11 @@ module BiologicalLaws
 
 using Statistics
 using DataStructures
-using ..EvolutionaryPatterns
-using ..HomeostasisControl
-using ..SymbioticSystems
+
+# Import from parent module
+using ..EvolutionaryPatterns: analyze_evolution, detect_patterns
+using ..HomeostasisControl: analyze_stability, optimize_control!
+using ..SymbioticSystems: calculate_cooperation_level, analyze_symbiotic_relationships
 
 """
     apply_biological_laws!(observatory, data)
@@ -30,12 +32,20 @@ function apply_biological_laws!(observatory, data::Dict{String, Any})
         )
     end
 
-    # Apply symbiotic laws
+    # Apply symbiotic laws with explicit error handling
     if haskey(data, "interactions")
-        result_state["symbiosis"] = Dict(
-            "cooperation" => calculate_cooperation_level(data["interactions"]),
-            "mutual_benefit" => analyze_symbiotic_relationships(data["interactions"])
-        )
+        try
+            result_state["symbiosis"] = Dict(
+                "cooperation" => calculate_cooperation_level(data["interactions"]),
+                "mutual_benefit" => analyze_symbiotic_relationships(data["interactions"])
+            )
+        catch e
+            @warn "Error applying symbiotic laws" exception=e
+            result_state["symbiosis"] = Dict(
+                "cooperation" => 0.0,
+                "mutual_benefit" => 0.0
+            )
+        end
     end
 
     return (state=result_state, observations=observations)
