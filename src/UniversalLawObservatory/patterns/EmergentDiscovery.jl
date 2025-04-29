@@ -2,6 +2,7 @@ module EmergentDiscovery
 
 using Statistics
 using DataStructures
+using SHA
 
 """
     PatternSignature
@@ -309,6 +310,63 @@ function calculate_evolution_metric(pattern::EmergentPattern, history::CircularB
         end
     end
     return count / max(1, length(history))
+end
+
+# --- REAL HELPER FUNCTION IMPLEMENTATIONS ---
+
+# Generate a pattern ID by hashing the characteristics
+function generate_pattern_id(characteristics)
+    str = join([string(c) for c in characteristics], ",")
+    return bytes2hex(sha1(str))
+end
+
+# Weighted average for stability (recent more important)
+function calculate_combined_stability(stab1, stab2)
+    return 0.7 * stab2 + 0.3 * stab1
+end
+
+# Consistency: fraction of history where all characteristics match
+function calculate_pattern_consistency(pattern::EmergentPattern, history)
+    total = length(history)
+    if total == 0
+        return 0.0
+    end
+    matches = 0
+    for ctx in history
+        found = true
+        for (k, _, v) in pattern.signature.characteristics
+            if !haskey(ctx.state_after, k) || ctx.state_after[k] != v
+                found = false
+                break
+            end
+        end
+        if found
+            matches += 1
+        end
+    end
+    return matches / total
+end
+
+# Predictability: how often the pattern's before-state predicts after-state
+function calculate_pattern_predictability(pattern::EmergentPattern, history)
+    total = 0
+    correct = 0
+    for ctx in history
+        for (k, _, v) in pattern.signature.characteristics
+            if haskey(ctx.state_before, k)
+                total += 1
+                if ctx.state_after[k] == v
+                    correct += 1
+                end
+            end
+        end
+    end
+    return total == 0 ? 0.0 : correct / total
+end
+
+# Generalizability: number of unique domains pattern appears in
+function calculate_pattern_generalizability(pattern::EmergentPattern)
+    return length(unique(pattern.spatial_distribution)) / max(1, length(pattern.spatial_distribution))
 end
 
 export PatternSignature, EmergentPattern, EmergentLaw, ObservationContext,

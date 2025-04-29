@@ -1,5 +1,6 @@
 module ModelRegistry
 
+using Statistics
 using DataStructures
 using Graphs
 using StatsBase
@@ -39,7 +40,7 @@ mutable struct Registry
     models::Dict{String, Model}
     capabilities::Dict{String, Capability}
     dependency_graph::SimpleDiGraph
-    version_history::Dict{String, Vector{String}>
+    version_history::Dict{String, Vector{String}}
     performance_thresholds::Dict{String, Float64}
 end
 

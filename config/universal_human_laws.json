@@ -1,0 +1,50 @@
+{
+    "laws": {
+        "physical": {
+            "gravitational": {
+                "newton": {
+                    "name": "Newton's Law of Universal Gravitation",
+                    "formula": "F = G * (m1 * m2) / r^2",
+                    "file_template": "physical/gravitational/NewtonianGravity.jl"
+                },
+                "einstein": {
+                    "name": "Einstein's General Relativity",
+                    "formula": "Gμν = 8πG/c^4 * Tμν",
+                    "file_template": "physical/gravitational/GeneralRelativity.jl"
+                }
+            },
+            "quantum": {
+                "schrodinger": {
+                    "name": "Schrödinger Equation",
+                    "formula": "iℏ∂ψ/∂t = Ĥψ",
+                    "file_template": "physical/quantum/SchrodingerEquation.jl"
+                }
+            }
+        },
+        "biological": {
+            "evolution": {
+                "natural_selection": {
+                    "name": "Natural Selection",
+                    "principles": ["variation", "inheritance", "selection"],
+                    "file_template": "biological/evolution/NaturalSelection.jl"
+                }
+            }
+        },
+        "mathematical": {
+            "information": {
+                "shannon": {
+                    "name": "Shannon's Information Theory",
+                    "formula": "H = -∑p(x)log₂p(x)",
+                    "file_template": "mathematical/information/ShannonInformation.jl"
+                }
+            }
+        }
+    },
+    "file_generation": {
+        "base_path": "src/UniversalLawObservatory",
+        "templates": {
+            "law_module": "templates/LawModule.jl.template",
+            "test": "templates/LawTest.jl.template"
+        }
+    }
+}

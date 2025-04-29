@@ -1,422 +1,281 @@
 module LawApplicationEngine
 
-using DataStructures
-using Statistics
 using Graphs
-using ..EmergentDiscovery
+using Statistics
+using DataStructures
 
 """
-    LawInstance
-Represents a specific instance of a universal law
+    LawEngine
+Engine for applying and managing universal laws
 """
-struct LawInstance
-    law_type::Symbol  # :physical, :biological, :mathematical
-    name::String
-    parameters::Dict{String, Any}
-    constraints::Vector{Function}
-    success_metric::Function
+mutable struct LawEngine
+    active_laws::Dict{String, Function}
+    law_dependencies::SimpleGraph{Int}
+    law_indices::Dict{String, Int}
+    reverse_indices::Dict{Int, String}
+    law_metrics::Dict{String, CircularBuffer{Float64}}
+    conflict_resolution::Dict{Tuple{String, String}, Function}
+    application_history::CircularBuffer{Dict{String, Any}}
 end
 
 """
-    ApplicationContext
-Represents the context in which a law is being applied
+    create_law_engine()
+Initialize a new law application engine
 """
-struct ApplicationContext
-    domain::Symbol
-    current_state::Dict{String, Any}
-    target_state::Dict{String, Any}
-    constraints::Dict{String, Function}
-    resources::Dict{String, Float64}
+function create_law_engine()
+    LawEngine(
+        Dict{String, Function}(),
+        SimpleGraph(0),
+        Dict{String, Int}(),
+        Dict{Int, String}(),
+        Dict{String, CircularBuffer{Float64}}(),
+        Dict{Tuple{String, String}, Function}(),
+        CircularBuffer{Dict{String, Any}}(1000)
+    )
 end
 
 """
-    LawApplication
-Tracks the application of a law to a specific context
+    register_law!(engine::LawEngine, law_id::String, law_fn::Function, dependencies::Vector{String}=String[])
+Register a new law with the engine
 """
-mutable struct LawApplication
-    law::LawInstance
-    context::ApplicationContext
-    success_rate::Float64
-    adaptation_history::CircularBuffer{Float64}
-    conflict_resolution::Dict{String, Function}
-end
-
-"""
-    create_law_instance(type::Symbol, name::String, params::Dict{String, Any})
-Create a new instance of a universal law
-"""
-function create_law_instance(type::Symbol, name::String, params::Dict{String, Any})
-    # Default success metric
-    default_metric = (state, target) -> begin
-        keys_to_check = intersect(keys(state), keys(target))
-        if isempty(keys_to_check)
-            return 0.0
+function register_law!(engine::LawEngine, law_id::String, law_fn::Function, dependencies::Vector{String}=String[])
+    # Add law to active laws
+    engine.active_laws[law_id] = law_fn
+    engine.law_metrics[law_id] = CircularBuffer{Float64}(1000)
+    
+    # Add vertex to dependency graph
+    new_index = length(engine.law_indices) + 1
+    engine.law_indices[law_id] = new_index
+    engine.reverse_indices[new_index] = law_id
+    add_vertex!(engine.law_dependencies)
+    
+    # Add dependency edges
+    for dep in dependencies
+        if haskey(engine.law_indices, dep)
+            add_edge!(engine.law_dependencies, engine.law_indices[dep], new_index)
         end
+    end
+    
+    return (success=true, index=new_index)
+end
+
+"""
+    apply_law!(engine::LawEngine, law_id::String, context::Dict{String, Any})
+Apply a specific law to a context
+"""
+function apply_law!(engine::LawEngine, law_id::String, context::Dict{String, Any})
+    if !haskey(engine.active_laws, law_id)
+        return (success=false, reason="Law not found")
+    end
+    
+    # Get law function
+    law_fn = engine.active_laws[law_id]
+    
+    # Apply law and measure performance
+    start_time = time()
+    try
+        result = law_fn(context)
+        end_time = time()
         
-        diffs = Float64[]
-        for key in keys_to_check
-            if state[key] isa Number && target[key] isa Number
-                push!(diffs, abs(state[key] - target[key]))
+        # Record performance metric
+        performance = calculate_law_performance(result, end_time - start_time)
+        push!(engine.law_metrics[law_id], performance)
+        
+        # Record application
+        push!(engine.application_history, Dict(
+            "law" => law_id,
+            "timestamp" => start_time,
+            "performance" => performance,
+            "context" => context
+        ))
+        
+        return (success=true, result=result, performance=performance)
+    catch e
+        return (success=false, reason="Law application failed: $e")
+    end
+end
+
+"""
+    apply_laws!(engine::LawEngine, context::Dict{String, Any})
+Apply all relevant laws to a context in dependency order
+"""
+function apply_laws!(engine::LawEngine, context::Dict{String, Any})
+    results = Dict{String, Any}()
+    performances = Dict{String, Float64}()
+    
+    # Get topological sorting of laws based on dependencies
+    try
+        ordered_indices = topological_sort_by_dfs(engine.law_dependencies)
+        ordered_laws = [engine.reverse_indices[i] for i in ordered_indices]
+        
+        # Apply laws in order
+        current_context = copy(context)
+        for law_id in ordered_laws
+            result = apply_law!(engine, law_id, current_context)
+            
+            if result.success
+                # Update context with law's results
+                merge!(current_context, result.result)
+                results[law_id] = result.result
+                performances[law_id] = result.performance
             end
         end
         
-        isempty(diffs) ? 0.0 : 1.0 - mean(diffs)
+        return (
+            success=true,
+            final_state=current_context,
+            individual_results=results,
+            performances=performances
+        )
+    catch e
+        return (success=false, reason="Law application sequence failed: $e")
     end
-    
-    LawInstance(
-        type,
-        name,
-        params,
-        Function[],  # Empty constraints initially
-        default_metric
-    )
 end
 
 """
-    create_application_context(domain::Symbol, current::Dict{String, Any}, target::Dict{String, Any})
-Create a new application context
-"""
-function create_application_context(domain::Symbol, current::Dict{String, Any}, target::Dict{String, Any})
-    ApplicationContext(
-        domain,
-        current,
-        target,
-        Dict{String, Function}(),  # Empty constraints
-        Dict{String, Float64}()    # Empty resources
-    )
-end
-
-"""
-    apply_law!(application::LawApplication)
-Apply a law in a specific context and track its success
-"""
-function apply_law!(application::LawApplication)
-    # Check constraints
-    for constraint in application.law.constraints
-        if !constraint(application.context.current_state)
-            return (success=false, reason="Constraint violation")
-        end
-    end
-    
-    # Apply the law based on its type
-    result = if application.law.law_type == :physical
-        apply_physical_law(application)
-    elseif application.law.law_type == :biological
-        apply_biological_law(application)
-    elseif application.law.law_type == :mathematical
-        apply_mathematical_law(application)
-    else
-        return (success=false, reason="Unknown law type")
-    end
-    
-    # Update success rate
-    success_rate = application.law.success_metric(
-        application.context.current_state,
-        application.context.target_state
-    )
-    
-    push!(application.adaptation_history, success_rate)
-    application.success_rate = mean(application.adaptation_history)
-    
-    return (success=true, result=result, success_rate=success_rate)
-end
-
-"""
-    apply_physical_law(application::LawApplication)
-Apply a physical law to the context
-"""
-function apply_physical_law(application::LawApplication)
-    # Implementation specific to physical laws
-    state = copy(application.context.current_state)
-    
-    # Apply transformations based on law parameters
-    for (param, value) in application.law.parameters
-        if haskey(state, param) && state[param] isa Number
-            state[param] *= value isa Number ? value : 1.0
-        end
-    end
-    
-    application.context.current_state = state
-    return state
-end
-
-"""
-    apply_biological_law(application::LawApplication)
-Apply a biological law to the context
-"""
-function apply_biological_law(application::LawApplication)
-    # Implementation specific to biological laws
-    state = copy(application.context.current_state)
-    
-    # Apply adaptive changes
-    for (param, value) in state
-        if value isa Number
-            # Implement homeostatic adjustment
-            target = get(application.context.target_state, param, value)
-            diff = target - value
-            state[param] += sign(diff) * min(abs(diff), abs(diff) * 0.1)
-        end
-    end
-    
-    application.context.current_state = state
-    return state
-end
-
-"""
-    apply_mathematical_law(application::LawApplication)
-Apply a mathematical law to the context
-"""
-function apply_mathematical_law(application::LawApplication)
-    # Implementation specific to mathematical laws
-    state = copy(application.context.current_state)
-    
-    # Apply mathematical transformations
-    for (param, value) in state
-        if value isa Number
-            # Apply mathematical operations based on law parameters
-            if haskey(application.law.parameters, "operation")
-                op = application.law.parameters["operation"]
-                if op == "scale"
-                    state[param] *= get(application.law.parameters, "factor", 1.0)
-                elseif op == "normalize"
-                    state[param] /= sum(values(state))
-                end
-            end
-        end
-    end
-    
-    application.context.current_state = state
-    return state
-end
-
-"""
-    resolve_conflicts(applications::Vector{LawApplication})
+    resolve_conflicts(engine::LawEngine, conflicts::Vector{Tuple{String, String}}, context::Dict{String, Any})
 Resolve conflicts between multiple law applications
 """
-function resolve_conflicts(applications::Vector{LawApplication})
-    if isempty(applications)
-        return []
-    end
+function resolve_conflicts(engine::LawEngine, conflicts::Vector{Tuple{String, String}}, context::Dict{String, Any})
+    resolutions = Dict{Tuple{String, String}, Any}()
     
-    # Create conflict graph
-    n = length(applications)
-    conflict_graph = SimpleGraph(n)
-    
-    # Detect conflicts
-    for i in 1:n
-        for j in (i+1):n
-            if has_conflict(applications[i], applications[j])
-                add_edge!(conflict_graph, i, j)
-            end
-        end
-    end
-    
-    # Resolve conflicts by prioritizing applications
-    priorities = [app.success_rate for app in applications]
-    resolved_order = sort(1:n, by=i -> priorities[i], rev=true)
-    
-    return applications[resolved_order]
-end
-
-"""
-    has_conflict(app1::LawApplication, app2::LawApplication)
-Check if two law applications conflict with each other
-"""
-function has_conflict(app1::LawApplication, app2::LawApplication)
-    # Check for shared parameters with different target values
-    shared_params = intersect(
-        keys(app1.context.target_state),
-        keys(app2.context.target_state)
-    )
-    
-    for param in shared_params
-        if app1.context.target_state[param] != app2.context.target_state[param]
-            return true
-        end
-    end
-    
-    return false
-end
-
-"""
-    LawApplicator
-Manages the application of discovered laws and patterns
-"""
-mutable struct LawApplicator
-    active_laws::Dict{String, EmergentLaw}
-    application_history::CircularBuffer{Dict{String, Float64}}
-    interaction_graph::Dict{String, Set{String}}
-    performance_metrics::Dict{String, Float64}
-end
-
-"""
-    create_law_applicator(buffer_size::Int=1000)
-Initialize a new law applicator
-"""
-function create_law_applicator(buffer_size::Int=1000)
-    LawApplicator(
-        Dict{String, EmergentLaw}(),
-        CircularBuffer{Dict{String, Float64}}(buffer_size),
-        Dict{String, Set{String}}(),
-        Dict{String, Float64}()
-    )
-end
-
-"""
-    register_law!(applicator::LawApplicator, law::EmergentLaw)
-Register a new emergent law with the applicator
-"""
-function register_law!(applicator::LawApplicator, law::EmergentLaw)
-    law_id = law.pattern.signature.id
-    applicator.active_laws[law_id] = law
-    applicator.interaction_graph[law_id] = Set{String}()
-    applicator.performance_metrics[law_id] = 1.0
-end
-
-"""
-    apply_laws!(applicator::LawApplicator, context::ObservationContext)
-Apply registered laws to the given context
-"""
-function apply_laws!(applicator::LawApplicator, context::ObservationContext)
-    results = Dict{String, Float64}()
-    
-    # Sort laws by performance metrics
-    sorted_laws = sort(collect(applicator.active_laws), by=x->applicator.performance_metrics[x.first], rev=true)
-    
-    for (law_id, law) in sorted_laws
-        if context.domain in law.applicability_domains
-            # Apply the law
-            initial_state = copy(context.state_before)
-            
-            # Apply interaction effects first
-            for interacting_law in applicator.interaction_graph[law_id]
-                if haskey(law.interaction_effects, interacting_law)
-                    initial_state = law.interaction_effects[interacting_law](initial_state)
-                end
-            end
-            
-            # Now apply the main law effects
+    for (law1, law2) in conflicts
+        # Check if we have a specific resolution function
+        resolution_key = (law1, law2)
+        if haskey(engine.conflict_resolution, resolution_key)
+            resolver = engine.conflict_resolution[resolution_key]
             try
-                new_state = apply_law_effects(law, initial_state)
-                
-                # Calculate effectiveness
-                effectiveness = calculate_law_effectiveness(new_state, context.state_after)
-                results[law_id] = effectiveness
-                
-                # Update performance metrics
-                applicator.performance_metrics[law_id] = 
-                    0.95 * applicator.performance_metrics[law_id] + 0.05 * effectiveness
-                
-                # Update state for next law
-                context = ObservationContext(
-                    context.timestamp,
-                    context.domain,
-                    new_state,
-                    context.state_after,
-                    [context.active_laws..., law_id]
+                resolution = resolver(
+                    engine.active_laws[law1],
+                    engine.active_laws[law2],
+                    context
                 )
+                resolutions[resolution_key] = resolution
             catch e
-                @warn "Failed to apply law $law_id: $e"
-                results[law_id] = 0.0
+                resolutions[resolution_key] = Dict(
+                    "status" => "failed",
+                    "reason" => "Resolution failed: $e"
+                )
             end
-        end
-    end
-    
-    push!(applicator.application_history, results)
-    return context
-end
-
-"""
-    apply_law_effects(law::EmergentLaw, state::Dict{String, Any})
-Apply the effects of a law to a given state
-"""
-function apply_law_effects(law::EmergentLaw, state::Dict{String, Any})
-    new_state = copy(state)
-    
-    # Apply pattern transformations
-    for characteristic in law.pattern.signature.characteristics
-        if characteristic isa Function
-            try
-                new_state = characteristic(new_state)
-            catch e
-                @warn "Failed to apply characteristic: $e"
-            end
-        end
-    end
-    
-    return new_state
-end
-
-"""
-    calculate_law_effectiveness(predicted::Dict{String, Any}, actual::Dict{String, Any})
-Calculate how effectively a law predicted the actual outcome
-"""
-function calculate_law_effectiveness(predicted::Dict{String, Any}, actual::Dict{String, Any})
-    shared_keys = intersect(keys(predicted), keys(actual))
-    if isempty(shared_keys)
-        return 0.0
-    end
-    
-    scores = Float64[]
-    for key in shared_keys
-        if predicted[key] isa Number && actual[key] isa Number
-            accuracy = 1.0 - min(1.0, abs(predicted[key] - actual[key]) / 
-                               max(abs(predicted[key]), abs(actual[key])))
-            push!(scores, accuracy)
-        elseif predicted[key] == actual[key]
-            push!(scores, 1.0)
         else
-            push!(scores, 0.0)
-        end
-    end
-    
-    return mean(scores)
-end
-
-"""
-    update_interaction_graph!(applicator::LawApplicator, law_id::String, interacting_laws::Vector{String})
-Update the interaction graph for a law
-"""
-function update_interaction_graph!(applicator::LawApplicator, law_id::String, interacting_laws::Vector{String})
-    if haskey(applicator.interaction_graph, law_id)
-        union!(applicator.interaction_graph[law_id], Set(interacting_laws))
-        
-        # Add reciprocal connections
-        for other_law in interacting_laws
-            if haskey(applicator.interaction_graph, other_law)
-                push!(applicator.interaction_graph[other_law], law_id)
+            # Default resolution: average numerical values, keep most recent others
+            result1 = apply_law!(engine, law1, context)
+            result2 = apply_law!(engine, law2, context)
+            
+            if result1.success && result2.success
+                resolution = merge(
+                    result1.result,
+                    result2.result
+                ) do v1, v2
+                    if isa(v1, Number) && isa(v2, Number)
+                        return (v1 + v2) / 2
+                    else
+                        return v2  # Keep most recent
+                    end
+                end
+                resolutions[resolution_key] = resolution
             end
         end
     end
+    
+    return resolutions
 end
 
 """
-    get_law_performance(applicator::LawApplicator)
-Get performance metrics for all active laws
+    update_interaction_graph!(engine::LawEngine)
+Update the interaction graph for laws based on application history
 """
-function get_law_performance(applicator::LawApplicator)
-    performance = Dict{String, Dict{String, Float64}}()
+function update_interaction_graph!(engine::LawEngine)
+    # Create new graph for current interactions
+    n_laws = length(engine.law_indices)
+    new_graph = SimpleGraph(n_laws)
     
-    for (law_id, law) in applicator.active_laws
-        recent_applications = [h[law_id] for h in applicator.application_history if haskey(h, law_id)]
-        
-        if !isempty(recent_applications)
-            performance[law_id] = Dict{String, Float64}(
-                "current_effectiveness" => applicator.performance_metrics[law_id],
-                "average_effectiveness" => mean(recent_applications),
-                "stability" => 1.0 - std(recent_applications) / mean(recent_applications),
-                "interaction_count" => length(applicator.interaction_graph[law_id])
-            )
+    # Analyze recent applications
+    recent_apps = collect(Iterators.take(engine.application_history, 100))
+    
+    # Track which laws are commonly applied together
+    cooccurrence = Dict{Tuple{String, String}, Int}()
+    
+    for i in 1:length(recent_apps)
+        for j in (i+1):length(recent_apps)
+            app1 = recent_apps[i]
+            app2 = recent_apps[j]
+            
+            # If applications are close in time
+            if abs(app1["timestamp"] - app2["timestamp"]) < 1.0
+                law_pair = (app1["law"], app2["law"])
+                cooccurrence[law_pair] = get(cooccurrence, law_pair, 0) + 1
+            end
         end
     end
     
-    return performance
+    # Add edges for strong interactions
+    for ((law1, law2), count) in cooccurrence
+        if count >= 5  # Threshold for significant interaction
+            if haskey(engine.law_indices, law1) && haskey(engine.law_indices, law2)
+                add_edge!(
+                    new_graph,
+                    engine.law_indices[law1],
+                    engine.law_indices[law2]
+                )
+            end
+        end
+    end
+    
+    # Update the dependency graph
+    engine.law_dependencies = new_graph
+    
+    return (success=true, interactions=length(edges(new_graph)))
 end
 
-export LawInstance, ApplicationContext, LawApplication,
-       create_law_instance, create_application_context,
-       apply_law!, resolve_conflicts,
-       LawApplicator, create_law_applicator, register_law!, apply_laws!,
-       update_interaction_graph!, get_law_performance
+"""
+    get_law_performance(engine::LawEngine, law_id::String)
+Get performance metrics for a law
+"""
+function get_law_performance(engine::LawEngine, law_id::String)
+    if !haskey(engine.law_metrics, law_id)
+        return (success=false, reason="Law not found")
+    end
+    
+    metrics = engine.law_metrics[law_id]
+    if isempty(metrics)
+        return (success=true, metrics=Dict{String, Float64}())
+    end
+    
+    recent_metrics = collect(Iterators.take(metrics, 100))
+    
+    return (
+        success=true,
+        metrics=Dict(
+            "mean_performance" => mean(recent_metrics),
+            "std_performance" => std(recent_metrics),
+            "min_performance" => minimum(recent_metrics),
+            "max_performance" => maximum(recent_metrics),
+            "trend" => length(recent_metrics) >= 2 ? 
+                      (last(recent_metrics) - first(recent_metrics)) / length(recent_metrics) :
+                      0.0
+        )
+    )
+end
+
+# Helper functions
+function calculate_law_performance(result::Dict{String, Any}, execution_time::Float64)
+    # Combine execution time, result quality, and impact metrics
+    time_score = 1.0 / (1.0 + execution_time)
+    
+    # Calculate result quality (presence of expected fields)
+    expected_fields = ["state", "impact", "confidence"]
+    quality_score = sum(haskey(result, field) for field in expected_fields) / length(expected_fields)
+    
+    # Calculate impact score
+    impact_score = get(result, "impact", 0.0)
+    
+    # Weighted combination
+    return 0.3 * time_score + 0.3 * quality_score + 0.4 * impact_score
+end
+
+export LawEngine, create_law_engine, register_law!, apply_law!,
+       apply_laws!, resolve_conflicts, update_interaction_graph!,
+       get_law_performance
 
 end # module
