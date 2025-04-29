@@ -187,7 +187,17 @@ function initialize!(system::CelestialSystem)
 
     # Enrich with internet data
     enrich_with_internet_data!(system)
+update-readme-status
 
+
+    
+    # Run research and experiment phase
+    run_research_and_experiment!(system)
+    
+    # Run coding and evolution phase
+    run_coding_and_evolution!(system)
+    
+main
     return (success=true, timestamp=time())
 end
 
@@ -562,6 +572,7 @@ function generate_system_report(system::CelestialSystem)
 end
 
 """
+ update-readme-status
     enumerate_and_apply_all_laws!(system::CelestialSystem, data::Dict{String,Any})
 Dynamically enumerate and apply all universal laws to the given data.
 """
@@ -738,11 +749,43 @@ function run_research_sessions!(system::CelestialSystem)
         @warn "Research session failed" exception=e
         return (success=false, error=e)
     end
+          
+    run_research_and_experiment!(system::CelestialSystem)
+Simulate the research and experiment phase for 1 hour.
+"""
+function run_research_and_experiment!(system::CelestialSystem)
+    println("Starting research and experiment phase...")
+    sleep(3600)  # Simulate 1 hour of research and experiment
+    println("Research and experiment phase completed.")
+end
+
+"""
+    run_coding_and_evolution!(system::CelestialSystem)
+Simulate the coding and evolution phase for 1 hour.
+"""
+function run_coding_and_evolution!(system::CelestialSystem)
+    println("Starting coding and evolution phase...")
+    sleep(3600)  # Simulate 1 hour of coding and evolution
+    println("Coding and evolution phase completed.")
+end
+
+"""
+    run_complete_session!(system::CelestialSystem)
+Run both research and experiment phase and coding and evolution phase sequentially.
+"""
+function run_complete_session!(system::CelestialSystem)
+    run_research_and_experiment!(system)
+    run_coding_and_evolution!(system)
+main
 end
 
 export CelestialSystem, create_celestial_system, initialize!,
        process_input!, evolve_system!, heal_system!, communicate!,
        optimize_system!, generate_system_report, enrich_with_internet_data!,
+update-readme-status
        run_dual_sessions!, run_research_sessions!
+
+       run_research_and_experiment!, run_coding_and_evolution!, run_complete_session!
+main
 
 end # module

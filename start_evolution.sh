@@ -64,3 +64,18 @@ julia --project=. -e '
         println("❌ Internet connection: Offline")
     end
 '
+
+# --- System Monitoring and Metrics Collection ---
+monitor_system() {
+    while true; do
+        clear
+        echo "🌞 Universal Celestial Intelligence System Monitoring"
+        echo "----------------------------------------"
+        get_codebase_metrics
+        show_info_graph
+        echo "----------------------------------------"
+        sleep 10
+    done
+}
+
+monitor_system &

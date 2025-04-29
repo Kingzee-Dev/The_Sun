@@ -1,6 +1,12 @@
 name = "UniversalCelestialIntelligence"
+update-readme-status
 uuid = "70901844-3783-4812-a513-7e0563b25e23"
 version = "0.1.0"
+=======
+uuid = "f2c52432-5678-4a01-b92c-3f075e2f3456"
+authors = ["Kingzee Chhachhi <ckingzee@gmail.com> (Lead, Maintainer, +91-9324750901)", "Aasees Chhachhi (Contributor, younger brother)", "Chand Chhachhi (Contributor, cousin, Jalandhar, Punjab, India)"]
+version = "0.2.0"
+main
 
 [deps]
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
