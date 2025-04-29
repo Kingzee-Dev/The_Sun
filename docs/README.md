@@ -3,6 +3,26 @@
 ## Overview
 Universal Celestial Intelligence (UCI) is a Julia-based, self-evolving system that integrates universal laws, pattern recognition, self-healing, and cross-domain knowledge. It is designed for adaptability, observability, and continuous improvement.
 
+## Key Features
+
+1. Self-Evolving Systems  
+   UCI optimizes itself for efficiency and evolves over time using built-in mechanisms for continuous improvement.
+
+2. Universal Law Integration  
+   Embeds physical, biological, and mathematical laws, enabling advanced pattern recognition and decision-making.
+
+3. Self-Healing Capabilities  
+   Provides real-time monitoring, anomaly detection, and automated recovery mechanisms to ensure system stability.
+
+4. Internet-Enriched Knowledge  
+   Leverages data from the internet for knowledge enrichment and pattern adaptation.
+
+5. Cross-Domain Pattern Recognition  
+   Works seamlessly across multiple domains, including manufacturing, healthcare, finance, and energy.
+
+6. Full Observability  
+   Offers comprehensive insights into the system's performance, health, and decision-making processes.
+
 ## Architecture & Core Modules
 
 - **UniversalLawObservatory**: Detects, validates, and applies physical, biological, and mathematical laws. Tracks system metrics and evolution.

@@ -15,5 +15,12 @@ Thank you for your interest in contributing!
 - Follow Julia community best practices.
 - Write descriptive commit messages.
 
+## Collaboration and Partnership Opportunities
+
+I am actively seeking:  
+1. Contributors: Developers, researchers, and engineers to improve UCI, fix bugs, and add new features.  
+2. Investors: To fund advanced development, expand the team, and scale UCI’s capabilities.  
+3. Partners: Startups, companies, and organizations interested in integrating UCI into their projects or collaborating on joint initiatives.
+
 ## Contact
 For questions, contact Kingzee Chhachhi at ckingzee@gmail.com or WhatsApp +91-9324750901.
