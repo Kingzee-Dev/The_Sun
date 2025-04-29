@@ -1,5 +1,5 @@
-name = "UniversalCelestialIntelligence"
-uuid = "70901844-3783-4812-a513-7e0563b25e23"
+name = "ScientificResearcher"
+uuid = "12345678-1234-5678-1234-567812345678"
 authors = ["Kingzee Chhachhi <ckingzee@gmail.com>"]
 version = "0.1.0"
 
@@ -13,21 +13,6 @@ Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 Graphs = "86223c79-3864-5bf0-83f7-82e725a168b6"
 HTTP = "cd3eb016-35fb-5094-929b-558a96fad6f3"
 JSON3 = "0f8b85d8-7281-11e9-16c2-39a750bddbf1"
-LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
-Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
-SHA = "ea8e919c-243c-51af-8825-aaa63cd721ce"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
-
-[compat]
-CSV = "0.10"
-DataFrames = "1.7"
-DataStructures = "0.18"
-DifferentialEquations = "7.7"
-Distributions = "0.25"
-Graphs = "1.8"
-HTTP = "1.9"
-JSON3 = "1.13"
-SHA = "0.7"  # Changed from 1.0 to 0.7 to match system image
-StatsBase = "0.34"
-julia = "1.9"
+UniversalLawObservatory = "70901844-3783-4812-a513-7e0563b25e23"

@@ -1,0 +1,150 @@
+{
+  "domains": {
+    "physical": {
+      "description": "Laws governing physical reality",
+      "subdomains": [
+        "gravitational",
+        "thermodynamic",
+        "electromagnetic",
+        "quantum",
+        "nuclear",
+        "relativistic",
+        "optical"
+      ]
+    },
+    "biological": {
+      "description": "Laws of life and evolution",
+      "subdomains": [
+        "evolutionary",
+        "homeostatic",
+        "symbiotic",
+        "genetic",
+        "ecological",
+        "metabolic",
+        "morphological"
+      ]
+    },
+    "mathematical": {
+      "description": "Abstract mathematical principles",
+      "subdomains": [
+        "fractal",
+        "chaos",
+        "information",
+        "geometric",
+        "algebraic",
+        "statistical",
+        "topological"
+      ]
+    },
+    "chemical": {
+      "description": "Laws of matter transformation",
+      "subdomains": [
+        "reaction_kinetics",
+        "equilibrium",
+        "bonding",
+        "catalysis",
+        "electrochemical",
+        "thermochemical",
+        "structural"
+      ]
+    },
+    "cognitive": {
+      "description": "Laws of mind and intelligence",
+      "subdomains": [
+        "learning",
+        "memory",
+        "reasoning",
+        "perception",
+        "attention",
+        "consciousness",
+        "decision"
+      ]
+    },
+    "social": {
+      "description": "Laws of collective behavior",
+      "subdomains": [
+        "network",
+        "emergence",
+        "cooperation",
+        "competition",
+        "hierarchy",
+        "diffusion",
+        "organization"
+      ]
+    },
+    "computational": {
+      "description": "Laws of information processing",
+      "subdomains": [
+                    "lyapunov": "calculate_lyapunov_exponent",
+                    "attractor": "analyze_attractor"
+                },
+                "information": {
+                    "entropy": "calculate_information_entropy",
+                    "flow": "analyze_information_flow"
+                }
+            }
+        },
+        "chemical": {
+            "description": "Laws of matter transformation",
+            "subdomains": [
+                "reaction_kinetics",
+                "equilibrium",
+                "bonding",
+                "catalysis",
+                "electrochemical",
+                "thermochemical",
+                "structural"
+            ]
+        },
+        "cognitive": {
+            "description": "Laws of mind and intelligence",
+            "subdomains": [
+                "learning",
+                "memory",
+                "reasoning",
+                "perception",
+                "attention",
+                "consciousness",
+                "decision"
+            ]
+        },
+        "social": {
+            "description": "Laws of collective behavior",
+            "subdomains": [
+                "network",
+                "emergence",
+                "cooperation",
+                "competition",
+                "hierarchy",
+                "diffusion",
+                "organization"
+            ]
+        },
+        "computational": {
+            "description": "Laws of information processing",
+            "subdomains": [
+                "complexity",
+                "optimization",
+                "logic",
+                "encryption",
+                "algorithmic",
+                "distributed",
+                "quantum_computing"
+            ]
+        }
+    },
+    "interactions": {
+        "physical_biological": {
+            "strength": 0.8,
+            "bidirectional": true
+        },
+        "mathematical_physical": {
+            "strength": 0.9,
+            "bidirectional": true
+        },
+        "mathematical_biological": {
+            "strength": 0.7,
+            "bidirectional": true
+        }
+    }
+}

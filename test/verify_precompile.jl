@@ -1,7 +1,23 @@
+# Add parent directory to load path
+push!(LOAD_PATH, dirname(dirname(@__FILE__)))
+
 using UniversalCelestialIntelligence
 using Test
+# Add package imports to verify
+using CSV, CUDA, DataFrames, DataStructures, DifferentialEquations
+using Distributions, Graphs, HTTP, JSON3, LinearAlgebra
+using SHA, Statistics, StatsBase
 
 function test_precompilation()
+    # Verify critical packages
+    @testset "Package Loading" begin
+        @test isdefined(@__MODULE__, :CSV)
+        @test isdefined(@__MODULE__, :CUDA)
+        @test isdefined(@__MODULE__, :DataFrames)
+        @test isdefined(@__MODULE__, :HTTP)
+        @test isdefined(@__MODULE__, :JSON3)
+    end
+
     # Create a simple test system
     system = create_celestial_system()
     
@@ -26,7 +42,19 @@ function test_precompilation()
     @assert haskey(system.hardware, "cpu") "CPU info missing"
     @assert haskey(system.hardware, "gpus") "GPU info missing"
     @assert haskey(system.hardware, "memory_gb") "Memory info missing"
-    
+
+    # Verify package functionality
+    @testset "Package Functionality" begin
+        # Test DataFrames
+        @test DataFrame(A=1:3, B=4:6) isa DataFrame
+        # Test JSON3
+        @test JSON3.read("{\"test\": 123}") isa JSON3.Object
+        # Test HTTP (async to avoid blocking)
+        response = fetch(@async HTTP.get("http://example.com"))
+        @test response.status == 200
+    end
+
+    println("✅ All packages successfully loaded and tested")
     println("✅ Precompilation verification passed")
     println("🔍 System components verified")
     println("💻 Hardware information captured")

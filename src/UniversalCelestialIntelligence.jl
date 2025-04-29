@@ -1,13 +1,22 @@
 module UniversalCelestialIntelligence
 
-include("InternetModule.jl")
-using .InternetModule
-
 using DataStructures
 using Statistics
 using Graphs
 using StatsBase
 using Dates
+using Random
+
+# Core includes
+include("UniversalLawObservatory.jl")
+
+# Then load other modules
+include("InternetModule.jl")
+include("ResearchSessionManager/ResearchSessionManager.jl")
+
+using .UniversalLawObservatory
+using .InternetModule
+using .ResearchSessionManager
 
 include("SystemScanner.jl")
 using .SystemScanner
@@ -40,7 +49,6 @@ include("UniversalLawObservatory/cognitive/CognitiveLaws.jl")
 include("UniversalLawObservatory/metrics/MetricsCollector.jl")
 
 # Main system components
-include("UniversalLawObservatory.jl")
 include("UniversalDataProcessor/UniversalDataProcessor.jl")
 include("ModelRegistry/ModelRegistry.jl")
 include("EvolutionEngine/EvolutionEngine.jl")
@@ -50,7 +58,6 @@ include("Explainability/Explainability.jl")
 include("CentralOrchestrator/CentralOrchestrator.jl")
 include("RealDataIngestion.jl")
 
-using .UniversalLawObservatory
 using .UniversalDataProcessor
 using .ModelRegistry
 using .EvolutionEngine
@@ -624,69 +631,150 @@ function enumerate_and_apply_all_laws!(system::CelestialSystem, data::Dict{Strin
 end
 
 """
-    run_dual_sessions!(system::CelestialSystem; scientist_duration=45*60, engineer_duration=60*60, log_file="TECHNICAL_DIARY.md", data_source=nothing, data_format=:json)
-Orchestrate alternating scientist and engineer sessions, logging all actions and internet enrichment in a human-readable diary. Scientist session fetches and experiments on real data.
+    run_dual_sessions!(system::CelestialSystem; scientist_duration=3*60*60, engineer_duration=60*60)
+Run scientist research session (3 hours) followed by engineering implementation session (1 hour)
 """
-function run_dual_sessions!(system::CelestialSystem; scientist_duration=45*60, engineer_duration=60*60, log_file="TECHNICAL_DIARY.md", data_source=nothing, data_format=:json)
-    session_start = now()
+function run_dual_sessions!(system::CelestialSystem; scientist_duration=3*60*60, engineer_duration=60*60)
+    # Create session directories
+    session_id = "session_$(Dates.format(now(), "yyyymmdd_HHMMSS"))"
+    research_dir = joinpath("research", "sessions", session_id)
+    mkpath(research_dir)
+
     # Scientist Session
-    open(log_file, "a") do io
-        println(io, "\n## [$(Dates.format(session_start, "yyyy-mm-dd HH:MM:SS"))] Scientist Session Start")
-        println(io, "- Role: Scientist")
-        println(io, "- Duration: $(scientist_duration/60) minutes (experiments on all known laws)")
-        println(io, "- Actions: Experimenting on all universal law domains, collecting data, seeking new laws.")
+    session_start = now()
+    
+    # Initialize research log files
+    research_log = joinpath(research_dir, "research_log.md")
+    data_file = joinpath(research_dir, "collected_data.json")
+    metrics_file = joinpath(research_dir, "metrics.json")
+    
+    open(research_log, "w") do io
+        println(io, "# Research Session: $session_id\n")
+        println(io, "## Overview")
+        println(io, "- Start Time: $(Dates.format(session_start, "yyyy-mm-dd HH:MM:SS"))")
+        println(io, "- Duration: $(scientist_duration/3600) hours")
+        println(io, "- Focus: Data collection and pattern analysis\n")
     end
-    # Fetch and experiment on real data
-    if data_source !== nothing
-        data_vec = fetch_open_data(data_source; format=data_format)
-        for (i, data) in enumerate(data_vec)
-            # Dynamically enumerate and apply all laws
-            law_results = enumerate_and_apply_all_laws!(system, data)
-            open(log_file, "a") do io
-                for (domain, res) in law_results
-                    println(io, "- [Scientist] Experiment $i: Domain $domain, Success: $(get(res, :success, true))")
+
+    # Collect and analyze data from free sources
+    datasets = fetch_free_datasets(system)
+    observations = Dict{String,Any}()
+    
+    for (source, data) in datasets
+        # Analyze data across all universal law domains
+        results = analyze_universal_laws(system, data)
+        
+        # Record observations
+        observations[source] = results
+        
+        # Log findings
+        open(research_log, "a") do io
+            println(io, "\n## Analysis: $source")
+            println(io, "### Observed Patterns")
+            for (domain, findings) in results
+                println(io, "\n#### $domain Domain")
+                for (pattern, confidence) in findings
+                    println(io, "- $pattern (confidence: $(round(confidence, digits=2)))")
                 end
             end
         end
-    else
-        sleep(5)  # Fallback: Simulate experiments if no data source
-    end
-    # Seek and register new laws using pattern discovery and internet enrichment
-    open(log_file, "a") do io
-        println(io, "- [Scientist] Seeking new laws via pattern discovery and internet enrichment.")
-    end
-    if hasmethod(discover_emergent_laws, Tuple{typeof(system.law_observatory)})
-        new_laws = discover_emergent_laws(system.law_observatory)
-        open(log_file, "a") do io
-            println(io, "- [Scientist] Discovered new laws: $(length(new_laws)) registered.")
-        end
-    end
-    enrich_with_internet_data!(system)
-    open(log_file, "a") do io
-        println(io, "- Scientist session complete. Data ready for engineer.")
     end
 
-    # Engineer Session
+    # Save machine-readable data
+    open(data_file, "w") do io
+        JSON3.write(io, observations)
+    end
+    
+    # Calculate and save metrics
+    metrics = calculate_research_metrics(observations)
+    open(metrics_file, "w") do io
+        JSON3.write(io, metrics)
+    end
+    
+    # Conclude research log
+    open(research_log, "a") do io
+        println(io, "\n## Summary")
+        println(io, "- Data Sources Analyzed: $(length(datasets))")
+        println(io, "- Total Patterns Found: $(sum(length.(values(observations))))")
+        println(io, "- Average Confidence: $(round(mean(metrics["confidence"]), digits=2))")
+        println(io, "\n## Next Steps")
+        println(io, "Engineering team to review findings and implement validated patterns.")
+    end
+
+    # Engineer Session remains focused on implementation
     engineer_start = now()
-    open(log_file, "a") do io
+    open(research_log, "a") do io
         println(io, "\n## [$(Dates.format(engineer_start, "yyyy-mm-dd HH:MM:SS"))] Engineer Session Start")
         println(io, "- Role: Engineer")
         println(io, "- Duration: $(engineer_duration/60) minutes (code evolution, integration)")
         println(io, "- Actions: Receives scientist data, evolves codebase, creates/updates modules, leverages internet for best practices.")
     end
     sleep(5)  # Simulate code evolution (placeholder)
-    open(log_file, "a") do io
+    open(research_log, "a") do io
         println(io, "- [Engineer] Using internet for reference implementations and best practices.")
     end
     enrich_with_internet_data!(system)
-    open(log_file, "a") do io
+    open(research_log, "a") do io
         println(io, "- Engineer session complete. System ready for next cycle.")
+    end
+end
+
+# Helper function to analyze data across domains
+function analyze_universal_laws(system, data)
+    results = Dict{String,Any}()
+    
+    # Physical domain analysis
+    results["physical"] = analyze_physical_patterns(system.law_observatory, data)
+    
+    # Biological domain analysis
+    results["biological"] = analyze_biological_patterns(system.law_observatory, data)
+    
+    # Mathematical domain analysis
+    results["mathematical"] = analyze_mathematical_patterns(system.law_observatory, data)
+    
+    return results
+end
+
+function calculate_research_metrics(observations)
+    metrics = Dict{String,Vector{Float64}}()
+    metrics["confidence"] = Float64[]
+    metrics["impact"] = Float64[]
+    
+    for (_, results) in observations
+        for (_, findings) in results
+            for (_, confidence) in findings
+                push!(metrics["confidence"], confidence)
+            end
+        end
+    end
+    
+    return metrics
+end
+
+"""
+    run_research_sessions!(system::CelestialSystem)
+Run alternating research sessions with data collection and experimentation
+"""
+function run_research_sessions!(system::CelestialSystem)
+    while true
+        cycle = run_research_cycle!(system)
+        
+        # Log results
+        open("RESEARCH_DIARY.md", "a") do io
+            println(io, "\n## Research Cycle Summary")
+            println(io, "- Scientific findings: $(length(cycle.scientist.findings))")
+            println(io, "- Engineering experiments: $(length(cycle.engineer.experiments))")
+            println(io, "- System stability: $(analyze_system_performance(system).stability)")
+        end
+        
+        # Optional break between cycles
+        sleep(300)  # 5 minute break
     end
 end
 
 export CelestialSystem, create_celestial_system, initialize!,
        process_input!, evolve_system!, heal_system!, communicate!,
        optimize_system!, generate_system_report, enrich_with_internet_data!,
-       run_dual_sessions!
+       run_dual_sessions!, run_research_sessions!
 
 end # module
