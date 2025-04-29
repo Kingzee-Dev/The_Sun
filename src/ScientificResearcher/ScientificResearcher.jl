@@ -6,6 +6,7 @@ using DifferentialEquations
 using Graphs
 using Distributions
 using Dates
+using ..ResearchSessionManager
 
 # Import law application functions from parent module
 using ..UniversalCelestialIntelligence: 
@@ -41,52 +42,23 @@ const LAW_CATEGORIES = Dict(
 )
 
 """
-Represents a scientific research session
+    run_research_cycle!(system, session::ResearchSessionManager.ResearchSession)
+Run a complete research cycle
 """
-mutable struct ResearchSession
-    session_id::String
-    start_time::DateTime
-    research_dir::String
-    known_laws::Dict{String,Vector{String}}
-    discovered_laws::Dict{String,Vector{String}}
-    observations::Dict{String,Any}
-    metrics::Dict{String,Vector{Float64}}
-    
-    function ResearchSession()
-        session_id = "session_$(Dates.format(now(), "yyyymmdd_HHMMSS"))"
-        research_dir = joinpath("research", "sessions", session_id)
-        mkpath(research_dir)
-        
-        new(
-            session_id,
-            now(),
-            research_dir,
-            Dict(domain => String[] for domain in DOMAINS),
-            Dict(domain => String[] for domain in DOMAINS),
-            Dict{String,Any}(),
-            Dict{String,Vector{Float64}}()
-        )
-    end
-end
-
-"""
-Run a complete research cycle including law scanning, experimentation and review
-"""
-function run_research_cycle!(system, session::ResearchSession)
-    # Phase 1: Scan and catalog existing laws (30 minutes)
-    println("📚 Phase 1: Cataloging Known Laws...")
+function run_research_cycle!(system, session::ResearchSessionManager.ResearchSession)
+    # Phase 1: Catalog existing laws
+    println("📚 Cataloging Known Laws...")
     catalog_existing_laws!(system, session)
-    identify_missing_laws!(system, session)
     
-    # Phase 2: Research Execution (2.5 hours)
-    println("\n🔬 Phase 2: Conducting Research...")
+    # Phase 2: Research Execution
+    println("\n🔬 Conducting Research...")
     for domain in DOMAINS
         println("\nStudying $(uppercase(domain)) Domain:")
         study_domain!(system, session, domain)
     end
     
-    # Phase 3: Review & Validation (1 hour) 
-    println("\n📋 Phase 3: Review & Validation...")
+    # Phase 3: Review & Validation
+    println("\n📋 Review & Validation...")
     review_findings!(system, session)
     
     return session
@@ -204,6 +176,6 @@ function review_findings!(system, session)
     end
 end
 
-export ResearchSession, run_research_cycle!
+export run_research_cycle!
 
 end # module

@@ -1,16 +1,13 @@
 using Pkg
 
-# Activate and resolve project environment
+# Activate project
 Pkg.activate(dirname(dirname(@__FILE__)))
 
-# Add required packages if not already present
-Pkg.add(["JSON3", "DataFrames", "CSV"])
-
-# Directly include the main module
+# Include main module
 include(joinpath(dirname(dirname(@__FILE__)), "src", "UniversalCelestialIntelligence.jl"))
 using .UniversalCelestialIntelligence
 
-# Create research session
+# Run research session
 try
     println("🔬 Starting Scientific Research Session...")
     
@@ -22,13 +19,16 @@ try
         error("System initialization failed: $(init_result[:error])")
     end
     
-    # Run research cycle
-    run_research_sessions!(system)
+    # Run research session
+    result = run_research_sessions!(system)
+    if !result.success
+        error("Research session failed: $(result.error)")
+    end
     
 catch e 
     println("\n❌ Error during research session:")
     println(e)
-    return 1
+    exit(1)
 end
 
-return 0
+exit(0)

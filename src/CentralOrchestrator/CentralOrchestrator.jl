@@ -18,7 +18,7 @@ mutable struct Orchestrator
     performance_history::CircularBuffer{Dict{String, Float64}}
     research_metrics::Dict{String, Vector{Float64}}  # Added for research data collection
     analysis_results::Dict{String, Any}  # Store research analysis results
-    health::Dict{String, Float64}  # Added explicit health tracking
+    research_session::Dict{String, Float64}  # Changed from health to research_session
 end
 
 """
@@ -36,7 +36,7 @@ function create_orchestrator()
         CircularBuffer{Dict{String, Float64}}(1000),
         Dict{String, Vector{Float64}}(),
         Dict{String, Any}(),
-        Dict{String, Float64}()
+        Dict{String, Float64}()  # Initialize research_session
     )
 end
 
@@ -103,12 +103,12 @@ function analyze_research_data(orchestrator::Orchestrator)
         )
     end
     
-    # Analyze health metrics
-    if !isempty(orchestrator.health)
-        health_values = collect(values(orchestrator.health))
-        results["health_analysis"] = Dict(
-            "mean_health" => isempty(health_values) ? 0.0 : mean(health_values),
-            "stability" => isempty(health_values) ? 0.0 : std(health_values)
+    # Analyze research metrics
+    if !isempty(orchestrator.research_session)
+        metrics = collect(values(orchestrator.research_session))
+        results["research_analysis"] = Dict(
+            "mean_value" => isempty(metrics) ? 0.0 : mean(metrics),
+            "stability" => isempty(metrics) ? 0.0 : std(metrics)
         )
     end
     

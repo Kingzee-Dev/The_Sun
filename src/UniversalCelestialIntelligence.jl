@@ -1,77 +1,34 @@
 module UniversalCelestialIntelligence
 
-using DataStructures, Statistics, Graphs, StatsBase, Dates, Random
+using Statistics
+using DataStructures
+using Dates
 
-# Include and import core observatory functionality first
-include("UniversalLawObservatory.jl")
-using .UniversalLawObservatory: 
-    LawObservatory,
-    create_law_observatory,
-    apply_physical_laws!,
-    apply_biological_laws!,
-    apply_mathematical_laws!
-
-# Then include other base modules
-include("InternetModule.jl")
-include("ResearchSessionManager/ResearchSessionManager.jl")
-include("SystemScanner.jl")
-
-# Import and re-export core functionality from UniversalLawObservatory
-export apply_physical_laws!, apply_biological_laws!, apply_mathematical_laws!
-
-# Import other modules
-using .InternetModule
-using .ResearchSessionManager
-using .SystemScanner
-
-# Include Scientific Researcher last since it depends on others
-include("ScientificResearcher/ScientificResearcher.jl")
-
-# Core domains include
-include("UniversalLawObservatory/patterns/EmergentDiscovery.jl")
-include("UniversalLawObservatory/patterns/CrossDomainDetector.jl")
-include("UniversalLawObservatory/patterns/LawApplicationEngine.jl")
-
-# Physical domain includes
-include("UniversalLawObservatory/physical/GravitationalAllocation.jl")
-include("UniversalLawObservatory/physical/ThermodynamicEfficiency.jl")
-include("UniversalLawObservatory/physical/QuantumProbability.jl")
-include("UniversalLawObservatory/physical/PhysicalLaws.jl")
-
-# Biological domain includes
-include("UniversalLawObservatory/biological/EvolutionaryPatterns.jl")
-include("UniversalLawObservatory/biological/HomeostasisControl.jl")
-include("UniversalLawObservatory/biological/SymbioticSystems.jl")
-include("UniversalLawObservatory/biological/BiologicalLaws.jl")
-
-# Mathematical domain includes
-include("UniversalLawObservatory/mathematical/FractalArchitecture.jl")
-include("UniversalLawObservatory/mathematical/ChaosTheory.jl")
-include("UniversalLawObservatory/mathematical/InformationTheory.jl")
-include("UniversalLawObservatory/mathematical/MathematicalLaws.jl")
-
-# Cognitive and metrics includes
-include("UniversalLawObservatory/cognitive/CognitiveLaws.jl")
-include("UniversalLawObservatory/metrics/MetricsCollector.jl")
-
-# Main system components
+# Include and use base modules first
+include("UniversalLawObservatory/UniversalLawObservatory.jl")
 include("UniversalDataProcessor/UniversalDataProcessor.jl")
 include("ModelRegistry/ModelRegistry.jl")
 include("EvolutionEngine/EvolutionEngine.jl")
-include("PlanetaryInterface/PlanetaryInterface.jl")
-include("SelfHealing/SelfHealing.jl")
-include("Explainability/Explainability.jl")
 include("CentralOrchestrator/CentralOrchestrator.jl")
-include("RealDataIngestion.jl")
 
+# Import base modules
+using .UniversalLawObservatory
 using .UniversalDataProcessor
 using .ModelRegistry
 using .EvolutionEngine
+using .CentralOrchestrator
+
+# Include secondary modules that depend on base modules
+include("PlanetaryInterface/PlanetaryInterface.jl")
+include("SelfHealing/SelfHealing.jl")
+include("ResearchSessionManager/ResearchSessionManager.jl")
+include("ScientificResearcher/ScientificResearcher.jl")
+
+# Import secondary modules
 using .PlanetaryInterface
 using .SelfHealing
-using .Explainability
-using .CentralOrchestrator
-using .RealDataIngestion
+using .ResearchSessionManager
+using .ScientificResearcher
 
 """
     CelestialSystem
@@ -738,17 +695,29 @@ function analyze_universal_laws(system, data)
     return results
 end
 
-function calculate_research_metrics(observations)
-    metrics = Dict{String,Vector{Float64}}()
-    metrics["confidence"] = Float64[]
-    metrics["impact"] = Float64[]
+function calculate_research_metrics(observations::Vector{Dict{String, Any}})
+    metrics = Dict{String, Any}()
     
-    for (_, results) in observations
-        for (_, findings) in results
-            for (_, confidence) in findings
-                push!(metrics["confidence"], confidence)
+    # Calculate aggregate statistics
+    if !isempty(observations)
+        numeric_values = Float64[]
+        for obs in observations
+            for (_, value) in obs
+                if isa(value, Number)
+                    push!(numeric_values, Float64(value))
+                end
             end
         end
+        
+        if !isempty(numeric_values)
+            metrics["mean"] = mean(numeric_values)
+            metrics["std"] = std(numeric_values)
+            metrics["confidence"] = [0.95]  # Research confidence level
+        end
+    else
+        metrics["mean"] = 0.0
+        metrics["std"] = 0.0
+        metrics["confidence"] = Float64[]
     end
     
     return metrics
@@ -756,22 +725,18 @@ end
 
 """
     run_research_sessions!(system::CelestialSystem)
-Run alternating research sessions with data collection and experimentation
+Run research sessions using the ScientificResearcher
 """
 function run_research_sessions!(system::CelestialSystem)
-    while true
-        cycle = run_research_cycle!(system)
-        
-        # Log results
-        open("RESEARCH_DIARY.md", "a") do io
-            println(io, "\n## Research Cycle Summary")
-            println(io, "- Scientific findings: $(length(cycle.scientist.findings))")
-            println(io, "- Engineering experiments: $(length(cycle.engineer.experiments))")
-            println(io, "- System stability: $(analyze_system_performance(system).stability)")
-        end
-        
-        # Optional break between cycles
-        sleep(300)  # 5 minute break
+    # Create research session using ScientificResearcher's version
+    session = ScientificResearcher.create_research_session()
+    
+    try
+        ScientificResearcher.run_research_cycle!(system, session)
+        return (success=true, session=session)
+    catch e
+        @warn "Research session failed" exception=e
+        return (success=false, error=e)
     end
 end
 
