@@ -6,6 +6,7 @@ Thank you for your interest in contributing!
 - Fork the repository and create your branch from `main`.
 - Write clear, well-documented code and add tests where possible.
 - Submit a pull request with a clear description of your changes.
+- Ensure your contributions comply with the ACORN policy.
 
 ## Reporting Issues
 - Use GitHub Issues to report bugs or request features.
@@ -14,6 +15,9 @@ Thank you for your interest in contributing!
 ## Code Style
 - Follow Julia community best practices.
 - Write descriptive commit messages.
+
+## ACORN Policy
+We follow the ACORN policy to ensure the highest standards of security, quality, and community engagement. Please review the ACORN policy before contributing to understand its requirements and guidelines.
 
 ## Collaboration and Partnership Opportunities
 

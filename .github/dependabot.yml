@@ -73,3 +73,16 @@ updates:
         versions: ["1.x"]
       - dependency-name: "Test"
         versions: ["1.x"]
+  - package-ecosystem: "julia"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    ignore:
+      - dependency-name: "Pkg"
+        versions: ["1.x"]
+      - dependency-name: "Test"
+        versions: ["1.x"]
+    commit-message:
+      prefix: "ACORN Policy Compliance"
+      include: "scope"
