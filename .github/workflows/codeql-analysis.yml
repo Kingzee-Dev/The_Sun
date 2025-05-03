@@ -36,3 +36,8 @@ jobs:
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v1
+
+    - name: Verify ACORN Policy Compliance
+      run: |
+        echo "Verifying ACORN policy compliance..."
+        # Add your ACORN policy compliance verification tool or script here

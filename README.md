@@ -131,3 +131,7 @@ For detailed documentation, see the [docs](docs/) directory.
 - [Code Review](CODE_REVIEW.md)
 - [Azure REST API Best Practices](https://docs.microsoft.com/en-us/azure/architecture/best-practices/)
 - [OpenAPI Initiative](https://www.openapis.org/)
+
+## ACORN Policy
+
+We follow the ACORN policy to ensure the highest standards of security, quality, and community engagement. Please review the ACORN policy before contributing to understand its requirements and guidelines. For more details, see [CONTRIBUTING.md](CONTRIBUTING.md).

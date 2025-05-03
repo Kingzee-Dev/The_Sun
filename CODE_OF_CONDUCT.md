@@ -8,6 +8,9 @@ We as members, contributors, and leaders pledge to make participation in our pro
 - No harassment, discrimination, or abusive language.
 - Accept constructive criticism gracefully.
 
+## ACORN Policy
+We follow the ACORN policy to ensure the highest standards of security, quality, and community engagement. Please review the ACORN policy to understand its requirements and guidelines.
+
 ## Enforcement
 Instances of abusive, harassing, or otherwise unacceptable behavior may be reported to Kingzee Chhachhi at ckingzee@gmail.com or WhatsApp +91-9324750901.
 
